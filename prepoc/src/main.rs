@@ -39,7 +39,11 @@ enum VariantType {
     DEL,
     DUP,
     INS,
-    INV
+    INV,
+    SVA,
+    ALU,
+    ME,
+    L1,
 }
 
 fn parse_alt(alt: &str) -> Vec<VariantType> {
@@ -51,7 +55,11 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
         "DUP" => Some(VariantType::DUP),
         "INS" => Some(VariantType::INS),
         "INV" => Some(VariantType::INV),
-        other => {println!("{}", other); None}
+        "SVA" => Some(VariantType::SVA),
+        "ALU" => Some(VariantType::ALU),
+        "ME"  => Some(VariantType::ME),
+        "L1"  => Some(VariantType::L1),
+        other => {println!("Unknown ALT value: {}", other); None}
     }).collect()
 }
 
@@ -59,7 +67,7 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
 #[derive(Debug)]
 enum InfoField {
     DBVARID,
-    CIEND(u64, u64),
+    CIEND(i64, u64),
     CIPOS(i64, u64),
     DESC(String),
     END(u64),
@@ -80,7 +88,7 @@ fn parse_info(info: &str) -> Vec<InfoField> {
         let infos : Vec<&str> = v.split(pattern).collect();
         match infos[0] {
         "DBVARID"    => Some(InfoField::DBVARID),
-        "CIEND"      => Some(InfoField::CIEND(u64::from_str(infos[1]).unwrap(),
+        "CIEND"      => Some(InfoField::CIEND(i64::from_str(infos[1]).unwrap(),
                                               u64::from_str(infos[2]).unwrap())),
         "CIPOS"      => Some(InfoField::CIPOS(i64::from_str(infos[1]).unwrap(),
                                               u64::from_str(infos[2]).unwrap())),
@@ -96,7 +104,7 @@ fn parse_info(info: &str) -> Vec<InfoField> {
         "REGION"     => Some(InfoField::REGION(String::from_str(infos[1]).unwrap())),
         "EXPERIMENT" => Some(InfoField::EXPERIMENT(u64::from_str(infos[1]).unwrap())),
         "SAMPLE"     => Some(InfoField::SAMPLE(String::from_str(infos[1]).unwrap())),
-        _            => None
+        other        => {println!("Unknown INFO field: {}", other); None}
         }
     }).collect()
 }
@@ -120,17 +128,9 @@ fn read_file() -> Result<(), io::Error> {
     let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
     let file = BufReader::new(&f);
 
-    let mut i : u32 = 0;
-
     for line in file.lines() {
-        i += 1; // For debug, use `take` otherwise.
-        println!("{}", i);
         let l = line.unwrap();
-        let record = parse_record(l);
-        println!("{:?}", record); 
-        if i > 10 {
-            break;
-        }
+        let _ = parse_record(l);
     }
     Ok(())
 }
