@@ -1,6 +1,7 @@
 /// File standards follow the description of https://github.com/samtools/hts-specs
 /// according to commit: 36576b330c81b0f40c37c97c6aa4529b488e48a1
 
+use std::collections::HashMap;
 use std::io;
 use std::fs::File;
 use std::io::BufReader;
@@ -16,13 +17,14 @@ struct VCFRecord {
     alt: Vec<VariantType>,
     quality: Option<u32>,
     filter: String,
-    info: Vec<InfoField>
+    info: HashMap<String, InfoField>
 }
 
 /// VCF record according to the V
 impl VCFRecord {
     fn new(chromosome: String, pos: Option<u64>, id: String, reference: String,
-           alt: Vec<VariantType>, quality: Option<u32>, filter: String, info: Vec<InfoField>)
+           alt: Vec<VariantType>, quality: Option<u32>, filter: String,
+           info: HashMap<String, InfoField>)
         -> VCFRecord {
         VCFRecord {
             chromosome: chromosome,
@@ -134,32 +136,45 @@ enum InfoField {
     SAMPLE(String)
 }
 
-fn parse_info(info: &str) -> Vec<InfoField> {
+fn parse_info(info: &str) -> HashMap<String, InfoField> {
     let fields = info.split(";");
-    fields.filter_map(|v| {
+    fields.fold(HashMap::new(), |mut m, v| {
         let pattern: &[_] = &['=', ','];
         let infos : Vec<&str> = v.split(pattern).collect();
         match infos[0] {
-        "DBVARID"    => Some(InfoField::DBVARID),
-        "CIEND"      => Some(InfoField::CIEND(i64::from_str(infos[1]).unwrap(),
-                                              u64::from_str(infos[2]).unwrap())),
-        "CIPOS"      => Some(InfoField::CIPOS(i64::from_str(infos[1]).unwrap(),
-                                              u64::from_str(infos[2]).unwrap())),
-        "DESC"       => Some(InfoField::DESC(String::from_str(infos[1]).unwrap())),
-        "END"        => Some(InfoField::END(u64::from_str(infos[1]).unwrap())),
-        "IMPRECISE"  => Some(InfoField::IMPRECISE),
-        "ENDrange"   => Some(InfoField::ENDrange(u64::from_str(infos[1]).unwrap(),
-                                                 u64::from_str(infos[2]).unwrap())),
-        "POSrange"   => Some(InfoField::POSrange(u64::from_str(infos[1]).unwrap(),
-                                                 u64::from_str(infos[2]).unwrap())),
-        "SVTYPE"     => Some(InfoField::SVTYPE(String::from_str(infos[1]).unwrap())),
-        "CALLID"     => Some(InfoField::CALLID(String::from_str(infos[1]).unwrap())),
-        "REGION"     => Some(InfoField::REGION(String::from_str(infos[1]).unwrap())),
-        "EXPERIMENT" => Some(InfoField::EXPERIMENT(u64::from_str(infos[1]).unwrap())),
-        "SAMPLE"     => Some(InfoField::SAMPLE(String::from_str(infos[1]).unwrap())),
+        "DBVARID"    => m.insert(infos[0].to_string(),
+                                 InfoField::DBVARID),
+        "CIEND"      => m.insert(infos[0].to_string(),
+                                 InfoField::CIEND(i64::from_str(infos[1]).unwrap(),
+                                                  u64::from_str(infos[2]).unwrap())),
+        "CIPOS"      => m.insert(infos[0].to_string(),
+                                 InfoField::CIPOS(i64::from_str(infos[1]).unwrap(),
+                                                  u64::from_str(infos[2]).unwrap())),
+        "DESC"       => m.insert(infos[0].to_string(),
+                                 InfoField::DESC(String::from_str(infos[1]).unwrap())),
+        "END"        => m.insert(infos[0].to_string(),
+                                 InfoField::END(u64::from_str(infos[1]).unwrap())),
+        "IMPRECISE"  => m.insert(infos[0].to_string(), InfoField::IMPRECISE),
+        "ENDrange"   => m.insert(infos[0].to_string(), 
+                                 InfoField::ENDrange(u64::from_str(infos[1]).unwrap(),
+                                                     u64::from_str(infos[2]).unwrap())),
+        "POSrange"   => m.insert(infos[0].to_string(),
+                                 InfoField::POSrange(u64::from_str(infos[1]).unwrap(),
+                                                     u64::from_str(infos[2]).unwrap())),
+        "SVTYPE"     => m.insert(infos[0].to_string(),
+                                 InfoField::SVTYPE(String::from_str(infos[1]).unwrap())),
+        "CALLID"     => m.insert(infos[0].to_string(),
+                                 InfoField::CALLID(String::from_str(infos[1]).unwrap())),
+        "REGION"     => m.insert(infos[0].to_string(),
+                                 InfoField::REGION(String::from_str(infos[1]).unwrap())),
+        "EXPERIMENT" => m.insert(infos[0].to_string(),
+                                 InfoField::EXPERIMENT(u64::from_str(infos[1]).unwrap())),
+        "SAMPLE"     => m.insert(infos[0].to_string(),
+                                        InfoField::SAMPLE(String::from_str(infos[1]).unwrap())),
         other        => {println!("Unknown INFO field: {}", other); None}
-        }
-    }).collect()
+        };
+        m
+    })
 }
 
 fn parse_record(input: String) -> Option<VCFRecord> {
@@ -182,14 +197,17 @@ fn parse_record(input: String) -> Option<VCFRecord> {
 }
 
 fn read_file() -> Result<(), io::Error> {
-    //let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
-    let f = try!(File::open("/data/fraimund/ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf"));
+    let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
+    //let f = try!(File::open("/data/fraimund/ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf"));
     let file = BufReader::new(&f);
 
     let records = file.lines().filter_map(|line| parse_record(line.unwrap()));
 
     let records = records.filter(|record| record.is_alt(vec![VariantType::DEL]));
-    println!("{}", records.count());
+    
+    for r in records.take(20) {
+        println!("{:?}", r);
+    }
 
     Ok(())
 }
