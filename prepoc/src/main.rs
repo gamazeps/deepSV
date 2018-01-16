@@ -41,6 +41,10 @@ impl VCFRecord {
     fn is_alt(&self, alts: Vec<VariantType>) -> bool {
         self.alt == alts
     }
+
+    fn has_ci(&self) -> bool {
+        self.info.contains_key("CIEND") || self.info.contains_key("CIPOS")
+    }
 }
 
 /// Fields here follow the ones from the
@@ -197,17 +201,18 @@ fn parse_record(input: String) -> Option<VCFRecord> {
 }
 
 fn read_file() -> Result<(), io::Error> {
-    let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
-    //let f = try!(File::open("/data/fraimund/ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf"));
+    //let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
+    let f = try!(File::open("/data/fraimund/ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf"));
     let file = BufReader::new(&f);
 
-    let records = file.lines().filter_map(|line| parse_record(line.unwrap()));
+    let records: Vec<VCFRecord> = file.lines().filter_map(|line| parse_record(line.unwrap())).collect();
 
-    let records = records.filter(|record| record.is_alt(vec![VariantType::DEL]));
-    
-    for r in records.take(20) {
-        println!("{:?}", r);
-    }
+    let count = records.len();
+    println!("Records: {}", count);
+
+    let ci_count = records.iter().filter(|record| record.has_ci()).count();
+    println!("Inconfident Records: {}", ci_count);
+    println!("Confident Records: {}", count - ci_count);
 
     Ok(())
 }
