@@ -45,31 +45,43 @@ impl VCFRecord {
 /// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
 #[derive(Debug, PartialEq, Eq)]
 enum VariantType {
-    CNV, /// Copy number variable region.
-    DEL, /// Deletion relative to the reference.
-    DUP, /// Region of elevated copy number relative to the reference.
-    INS, /// Insertion of sequence relative to the reference.
-    INV, /// Inversion of reference sequence.
-    SVA, /// Undocumented.
-    ALU, /// Undocumented.
-    ME,  /// Undocumented.
-    L1,  /// Undocumented.
+    /// Copy number variable region.
+    CNV,
+    /// Deletion relative to the reference.
+    DEL,
+    /// Region of elevated copy number relative to the reference.
+    DUP, 
+    /// Insertion of sequence relative to the reference.
+    INS, 
+    /// Inversion of reference sequence.
+    INV, 
+    /// Undocumented.
+    SVA, 
+    /// Undocumented.
+    ALU,
+    /// Undocumented.
+    ME,
+    /// Undocumented.
+    L1,
+    /// Human Endogenous RetroVirus.
+    HERV
 }
 
 fn parse_alt(alt: &str) -> Vec<VariantType> {
     let pattern: &[_] = &['<', '>'];
     let fields = alt.trim_matches(pattern).split(":");
     fields.filter_map(|v| match v {
-        "CNV" => Some(VariantType::CNV),
-        "DEL" => Some(VariantType::DEL),
-        "DUP" => Some(VariantType::DUP),
-        "INS" => Some(VariantType::INS),
-        "INV" => Some(VariantType::INV),
-        "SVA" => Some(VariantType::SVA),
-        "ALU" => Some(VariantType::ALU),
-        "ME"  => Some(VariantType::ME),
-        "L1"  => Some(VariantType::L1),
-        other => {println!("Unknown ALT value: {}", other); None}
+        "CNV"  => Some(VariantType::CNV),
+        "DEL"  => Some(VariantType::DEL),
+        "DUP"  => Some(VariantType::DUP),
+        "INS"  => Some(VariantType::INS),
+        "INV"  => Some(VariantType::INV),
+        "SVA"  => Some(VariantType::SVA),
+        "ALU"  => Some(VariantType::ALU),
+        "ME"   => Some(VariantType::ME),
+        "L1"   => Some(VariantType::L1),
+        "HERV" => Some(VariantType::HERV),
+        other  => {println!("Unknown ALT value: {}", other); None}
     }).collect()
 }
 
@@ -150,9 +162,14 @@ fn parse_info(info: &str) -> Vec<InfoField> {
     }).collect()
 }
 
-fn parse_record(input: String) -> VCFRecord {
+fn parse_record(input: String) -> Option<VCFRecord> {
+    // We remove headers that we do not parse.
+    if input.starts_with("#") {
+        return None
+    }
+
     let words : Vec<&str> = input.split('\t').collect();
-    VCFRecord::new(
+    Some(VCFRecord::new(
         String::from_str(words[0]).unwrap(),
         Some(u64::from_str(words[1]).unwrap()),
         String::from_str(words[2]).unwrap(),
@@ -161,20 +178,18 @@ fn parse_record(input: String) -> VCFRecord {
         u32::from_str(words[5]).ok(),
         String::from_str(words[6]).unwrap(),
         parse_info(words[7]),
-    )
+    ))
 }
 
 fn read_file() -> Result<(), io::Error> {
-    let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
+    //let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
+    let f = try!(File::open("/data/fraimund/ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf"));
     let file = BufReader::new(&f);
 
-    let records = file.lines().map(|line| parse_record(line.unwrap()));
+    let records = file.lines().filter_map(|line| parse_record(line.unwrap()));
 
-    let records = records.filter(|record| record.is_alt(vec![VariantType::DEL])).take(10);
-
-    for r in records {
-        println!("{:?}", r);
-    }
+    let records = records.filter(|record| record.is_alt(vec![VariantType::DEL]));
+    println!("{}", records.count());
 
     Ok(())
 }
