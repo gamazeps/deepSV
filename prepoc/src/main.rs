@@ -1,3 +1,6 @@
+/// File standards follow the description of https://github.com/samtools/hts-specs
+/// according to commit: 36576b330c81b0f40c37c97c6aa4529b488e48a1
+
 use std::io;
 use std::fs::File;
 use std::io::BufReader;
@@ -16,6 +19,7 @@ struct VCFRecord {
     info: Vec<InfoField>
 }
 
+/// VCF record according to the V
 impl VCFRecord {
     fn new(chromosome: String, pos: Option<u64>, id: String, reference: String,
            alt: Vec<VariantType>, quality: Option<u32>, filter: String, info: Vec<InfoField>)
@@ -37,6 +41,8 @@ impl VCFRecord {
     }
 }
 
+/// Fields here follow the ones from the
+/// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
 #[derive(Debug, PartialEq, Eq)]
 enum VariantType {
     CNV, /// Copy number variable region.
@@ -67,7 +73,8 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
     }).collect()
 }
 
-/// Info fields from the dbvar database
+/// Fields here follow the ones from the
+/// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
 #[derive(Debug, PartialEq, Eq)]
 enum InfoField {
     /// ID is a dbVar accession.
