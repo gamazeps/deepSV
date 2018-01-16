@@ -4,7 +4,7 @@ use std::io::BufReader;
 use std::io::BufRead;
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct VCFRecord {
     chromosome: String,
     pos: Option<u64>,
@@ -137,4 +137,22 @@ fn read_file() -> Result<(), io::Error> {
 
 fn main() {
     let _ = read_file();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_info() {
+        assert_eq!(
+            vec![InfoField::DBVARID,
+                 InfoField::CALLID("DEL_pindel_91_NA12878".to_string()),
+                 InfoField::SVTYPE("DEL".to_string()),
+                 InfoField::EXPERIMENT(9),
+                 InfoField::SAMPLE("NA12878".to_string()),
+                 InfoField::END(2911850),
+                 InfoField::REGION("esv3818169".to_string())],
+            parse_info("DBVARID;CALLID=DEL_pindel_91_NA12878;SVTYPE=DEL;EXPERIMENT=9;SAMPLE=NA12878;END=2911850;REGION=esv3818169"))
+    }
 }
