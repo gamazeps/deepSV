@@ -31,19 +31,23 @@ impl VCFRecord {
             info: info
         }
     }
+
+    fn is_alt(&self, alts: Vec<VariantType>) -> bool {
+        self.alt == alts
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum VariantType {
-    CNV,
-    DEL,
-    DUP,
-    INS,
-    INV,
-    SVA,
-    ALU,
-    ME,
-    L1,
+    CNV, /// Copy number variable region.
+    DEL, /// Deletion relative to the reference.
+    DUP, /// Region of elevated copy number relative to the reference.
+    INS, /// Insertion of sequence relative to the reference.
+    INV, /// Inversion of reference sequence.
+    SVA, /// Undocumented.
+    ALU, /// Undocumented.
+    ME,  /// Undocumented.
+    L1,  /// Undocumented.
 }
 
 fn parse_alt(alt: &str) -> Vec<VariantType> {
@@ -64,20 +68,50 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
 }
 
 /// Info fields from the dbvar database
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum InfoField {
-    DBVARID,
-    CIEND(i64, u64),
+    /// ID is a dbVar accession.
+    DBVARID, 
+
+    /// Confidence interval around END for imprecise variants.
+    CIEND(i64, u64), 
+
+    /// Confidence interval around POS for imprecise variants.
     CIPOS(i64, u64),
+
+    /// Any additional information about this call (free text, enclose in double quotes).
     DESC(String),
-    END(u64),
-    IMPRECISE,
+
+    /// End position of the variant described in this record.
+    END(u64),  
+
+    /// Imprecise structural variation.
+    IMPRECISE, 
+
+    /// For imprecise variants, if END represents an inner_stop or outer_stop coordinate, use a
+    /// comma-delimited list to indicate this; e.g., if END is an inner_stop and its value is
+    /// 108442336, you would enter '108442336,.'.
     ENDrange(u64, u64),
+
+    /// For imprecise variants, if POS represents an inner_start or outer_start coordinate, use a
+    /// comma-delimited list to indicate this; e.g., if POS is an inner_start and its value is
+    /// 2865734, you would enter '.,2865734'.
     POSrange(u64, u64),
+
+    /// Type of structural variant, must be one of: DEL, INS, DUP, INV, CNV.
     SVTYPE(String),
+
+    /// Submitted variant call id.
     CALLID(String),
+
+    /// The parent variant region accession(s).
     REGION(String),
+
+    /// The experiment_id (from EXPERIMENTS tab) of the experiment that was used to generate this
+    /// call.
     EXPERIMENT(u64),
+
+    /// Sample_id from dbVar submission; every call must have SAMPLE or SAMPLESET, but NOT BOTH.
     SAMPLE(String)
 }
 
@@ -109,7 +143,6 @@ fn parse_info(info: &str) -> Vec<InfoField> {
     }).collect()
 }
 
-
 fn parse_record(input: String) -> VCFRecord {
     let words : Vec<&str> = input.split('\t').collect();
     VCFRecord::new(
@@ -128,10 +161,14 @@ fn read_file() -> Result<(), io::Error> {
     let f = try!(File::open("../data/PHASE3_SV_NA12878.vcf"));
     let file = BufReader::new(&f);
 
-    for line in file.lines() {
-        let l = line.unwrap();
-        let _ = parse_record(l);
+    let records = file.lines().map(|line| parse_record(line.unwrap()));
+
+    let records = records.filter(|record| record.is_alt(vec![VariantType::DEL])).take(10);
+
+    for r in records {
+        println!("{:?}", r);
     }
+
     Ok(())
 }
 
