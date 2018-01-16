@@ -170,7 +170,7 @@ fn parse_info(info: &str) -> HashMap<String, InfoField> {
         "EXPERIMENT" => m.insert(infos[0].to_string(),
                                  InfoField::EXPERIMENT(u64::from_str(infos[1]).unwrap())),
         "SAMPLE"     => m.insert(infos[0].to_string(),
-                                        InfoField::SAMPLE(String::from_str(infos[1]).unwrap())),
+                                 InfoField::SAMPLE(String::from_str(infos[1]).unwrap())),
         other        => {println!("Unknown INFO field: {}", other); None}
         };
         m
