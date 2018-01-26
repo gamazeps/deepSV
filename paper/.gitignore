@@ -1,2 +1,5 @@
 # We just want to keep the latex file
-*.pdf
+*.out
+*.aux
+*.log
+*.synctex.gz
