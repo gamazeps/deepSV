@@ -1,0 +1,65 @@
+\documentclass{article}
+
+\usepackage{algpseudocode}
+
+\title{DeepSV pseudo code}
+
+
+\begin{document}
+	% \nipsfinalcopy is no longer used
+	
+	\maketitle
+
+
+	\section{Prediction}
+	
+	\begin{algorithmic}
+		\Function{deepSV\_caller}{$reads, reference, representation, model$}
+			\State {$ calls \gets \Call{Set}{} $}
+			\State {// We need the mean and standard deviation of the read and insert size}
+			\State {$ stats \gets \Call{read\_statistics}{reads} $}
+			\State {// Classical algorithm family used in Pindel, GenomeSTRIP, Delly\dots}
+			\State {$ candidates \gets \Call{anomalous\_read\_pairs\_clustering}{reads, stats} $}
+			
+			\For {$ candidate$ in $candidates $}
+				\State {$ processed\_reads \gets \Call{representation}{candidate, reads, stats} $}
+				\State {$ proba \gets \Call{model}{processed\_reads} $}
+				\If {$ proba \ge 0.5 $}
+					\State {$ \Call{add}{calls, candidate} $}
+				\EndIf
+			\EndFor
+			
+			\State {$ located\_callss \gets \Call{Set}{} $}
+			
+			\For {$call$ in $calls$}
+				\State {$ located\_call \gets \Call{split\_read\_location}{call, reads, reference} $}
+				\State {// If we cannot use Split Read to locate the breakpoint, we approximate with the supporting reads}
+				\If {$ located\_call == NULL $}
+					\State {$ located\_call \gets \Call{supporting\_reads\_bound}{call} $}
+				\EndIf
+				\State {$ \Call{add}{located\_calls, located\_call} $}
+			\EndFor
+			
+			\Return {$ \Call{format\_to\_vcf}{located\_calls} $} 
+		\EndFunction
+	\end{algorithmic}
+	
+	\newpage
+	
+	\begin{algorithmic}	
+		\Function{representation}{candidate, reads, stats}
+			\State {$ supporting_reads \gets \Call{get\_supporting\_reads}{candidate} $}
+			\State {$ mean\_insert \gets \Call{mean\_insert\_size}{stats} $ }
+			\State {$ mean\_read \gets \Call{mean\_read\_size}{stats} $ }
+			\State {$ window_size \gets 2 \times (mean\_insert + mean\_read)$}
+			\State {$ leftmost \gets \Call{leftmost}{supporting\_reads}$}
+			\State {$ left\_window \gets \Call{extract\_reads}{leftmost, window\_size, reads} $}
+			\State {$ rightmost \gets \Call{rigthmost}{supporting\_reads}$}
+			\State {$ right\_window \gets \Call{extract\_reads}{rightmost, window\_size, reads} $}
+			
+			\Return {$ \Call{union}{left\_wondow, right\_window} $}
+		\EndFunction
+	\end{algorithmic}
+	
+
+\end{document}
