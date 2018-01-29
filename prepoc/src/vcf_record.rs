@@ -4,7 +4,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct VCFRecord {
     chromosome: String,
     pos: Option<u64>,
@@ -46,7 +46,7 @@ impl VCFRecord {
 
 /// Fields here follow the ones from the
 /// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum VariantType {
     /// Copy number variable region.
     CNV,
@@ -90,7 +90,7 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
 
 /// Fields here follow the ones from the
 /// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InfoField {
     /// ID is a dbVar accession.
     DBVARID,
@@ -200,7 +200,20 @@ pub fn parse_record(input: String) -> Option<VCFRecord> {
 pub fn parse_vcf_file(input: String) -> Vec<VCFRecord> {
     let f = File::open(input).unwrap();
     let file = BufReader::new(&f);
-    file.lines().filter_map(|line| parse_record(line.unwrap())) .collect()
+    file.lines().filter_map(|line| parse_record(line.unwrap())).collect()
+}
+
+// TODO(gamazeps): make a typed string for Samples
+pub fn group_by_sample(records: Vec<VCFRecord>) -> HashMap<String, Vec<VCFRecord>> {
+    records.iter().fold(HashMap::new(), |mut m, v| {
+        let sample = match v.info.get("SAMPLE") {
+            Some(&InfoField::SAMPLE(ref s)) => s.clone(),
+            _ => panic!("Wrong data inside the SAMPLE field for record {:?}", v)
+        };
+        // TODO(gamazeps): this clone looks very bad
+        m.entry(sample).or_insert(Vec::new()).push(v.clone());
+        m
+    })
 }
 
 #[test]

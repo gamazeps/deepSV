@@ -4,7 +4,7 @@
 mod picard_stats;
 mod vcf_record;
 
-use vcf_record::parse_vcf_file;
+use vcf_record::{group_by_sample, parse_vcf_file};
 
 fn main() {
     let records = parse_vcf_file("../data/PHASE3_SV_NA12878.vcf".to_owned());
@@ -18,7 +18,11 @@ fn main() {
     let count = records.len();
     println!("Records: {}", count);
 
-    let ci_count = records.iter().filter(|record| record.has_ci()).count();
-    println!("Inconfident Records: {}", ci_count);
-    println!("Confident Records: {}", count - ci_count);
+    for (k, v) in group_by_sample(records).iter() {
+        println!("{}: {} variants", k, v.len());
+    }
+
+    //let ci_count = records.iter().filter(|record| record.has_ci()).count();
+    //println!("Inconfident Records: {}", ci_count);
+    //println!("Confident Records: {}", count - ci_count);
 }
