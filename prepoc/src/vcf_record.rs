@@ -1,5 +1,8 @@
-use std::str::FromStr;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct VCFRecord {
@@ -50,13 +53,13 @@ pub enum VariantType {
     /// Deletion relative to the reference.
     DEL,
     /// Region of elevated copy number relative to the reference.
-    DUP, 
+    DUP,
     /// Insertion of sequence relative to the reference.
-    INS, 
+    INS,
     /// Inversion of reference sequence.
-    INV, 
+    INV,
     /// Undocumented.
-    SVA, 
+    SVA,
     /// Undocumented.
     ALU,
     /// Undocumented.
@@ -90,10 +93,10 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum InfoField {
     /// ID is a dbVar accession.
-    DBVARID, 
+    DBVARID,
 
     /// Confidence interval around END for imprecise variants.
-    CIEND(i64, u64), 
+    CIEND(i64, u64),
 
     /// Confidence interval around POS for imprecise variants.
     CIPOS(i64, u64),
@@ -102,10 +105,10 @@ pub enum InfoField {
     DESC(String),
 
     /// End position of the variant described in this record.
-    END(u64),  
+    END(u64),
 
     /// Imprecise structural variation.
-    IMPRECISE, 
+    IMPRECISE,
 
     /// For imprecise variants, if END represents an inner_stop or outer_stop coordinate, use a
     /// comma-delimited list to indicate this; e.g., if END is an inner_stop and its value is
@@ -153,7 +156,7 @@ fn parse_info(info: &str) -> HashMap<String, InfoField> {
         "END"        => m.insert(infos[0].to_string(),
                                  InfoField::END(u64::from_str(infos[1]).unwrap())),
         "IMPRECISE"  => m.insert(infos[0].to_string(), InfoField::IMPRECISE),
-        "ENDrange"   => m.insert(infos[0].to_string(), 
+        "ENDrange"   => m.insert(infos[0].to_string(),
                                  InfoField::ENDrange(u64::from_str(infos[1]).unwrap(),
                                                      u64::from_str(infos[2]).unwrap())),
         "POSrange"   => m.insert(infos[0].to_string(),
@@ -192,6 +195,12 @@ pub fn parse_record(input: String) -> Option<VCFRecord> {
         String::from_str(words[6]).unwrap(),
         parse_info(words[7]),
     ))
+}
+
+pub fn parse_vcf_file(input: String) -> Vec<VCFRecord> {
+    let f = File::open(input).unwrap();
+    let file = BufReader::new(&f);
+    file.lines().filter_map(|line| parse_record(line.unwrap())) .collect()
 }
 
 #[test]
