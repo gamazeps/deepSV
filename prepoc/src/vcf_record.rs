@@ -42,6 +42,18 @@ impl VCFRecord {
     pub fn has_ci(&self) -> bool {
         self.info.contains_key("CIEND") || self.info.contains_key("CIPOS")
     }
+
+    pub fn get_info(&self, key: String) -> Option<InfoField> {
+        self.info.get(&key).cloned()
+    }
+
+    pub fn pos(&self) -> Option<u64> {
+        self.pos
+    }
+
+    pub fn chromosome(&self) -> String {
+        self.chromosome.clone()
+    }
 }
 
 /// Fields here follow the ones from the
