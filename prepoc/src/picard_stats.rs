@@ -1,3 +1,8 @@
+use std::process::Command;
+use std::thread;
+use std::thread::JoinHandle;
+use std::sync::Arc;
+
 #[allow(non_snake_case, dead_code)]
 pub struct CollectAlignmentSummaryMetrics {
     /// One of either UNPAIRED (for a fragment run), FIRST_OF_PAIR when metrics are for only the
@@ -162,3 +167,79 @@ pub struct InsertSizeMetrics {
     /// The "width" of the bins, centered around the median, that encompass 100% of all read pairs.
     WIDTH_OF_99_PERCENT : u32,
 }
+
+#[allow(dead_code)]
+pub struct PicardMetrics {
+    insert_size_metrics: InsertSizeMetrics,
+    alignement_metrics: CollectAlignmentSummaryMetrics
+}
+
+impl PicardMetrics {
+    fn new(insert_size_metrics: InsertSizeMetrics,
+           alignement_metrics: CollectAlignmentSummaryMetrics)
+        -> PicardMetrics {
+        PicardMetrics {
+            alignement_metrics: alignement_metrics,
+            insert_size_metrics: insert_size_metrics
+        }
+    }
+}
+
+fn insert_metrics(picard_path: Arc<String>, bam_file: Arc<String>, reference_file: Arc<String>)
+    -> JoinHandle<Option<InsertSizeMetrics>> {
+
+    let insert_metrics_file = format!("{}.insert.tmp", bam_file);
+    thread::spawn(move || {
+        let _ = Command::new("java")
+            .arg("-jar")
+            .arg(picard_path.as_ref())
+            .arg("InsertSizeMetrics")
+            .arg(format!("R={}", reference_file))
+            .arg(format!("I={}", bam_file))
+            .arg(format!("O={}", insert_metrics_file))
+            .arg("H=/tmp/who_cares.pdf")
+            .arg("M=0.5")
+            .spawn();
+        None
+    })
+}
+
+fn alignement_metrics(picard_path: Arc<String>, bam_file: Arc<String>, reference_file: Arc<String>)
+    -> JoinHandle<Option<CollectAlignmentSummaryMetrics>> {
+
+    let alignement_metrics_file = format!("{}.allignment.tmp", bam_file);
+    thread::spawn(move || {
+        let _ = Command::new("java")
+            .arg("-jar")
+            .arg(picard_path.as_ref())
+            .arg("CollectAlignmentSummaryMetrics")
+            .arg(format!("R={}", reference_file))
+            .arg(format!("I={}", bam_file))
+            .arg(format!("O={}", alignement_metrics_file));
+        None
+    })
+}
+
+#[allow(dead_code)]
+pub fn picard_metrics(picard_path: String, bam_file: String, reference_file: String)
+    -> PicardMetrics {
+
+    let picard_path = Arc::new(picard_path);
+    let bam_file = Arc::new(bam_file);
+    let reference_file = Arc::new(reference_file);
+
+    let alignement_handle = alignement_metrics(picard_path.clone(),
+                                               bam_file.clone(),
+                                               reference_file.clone());
+    let insert_handle = insert_metrics(picard_path.clone(),
+                                       bam_file.clone(),
+                                       reference_file.clone());
+
+    let insert = insert_handle.join().unwrap() // Result from join.
+                                     .unwrap(); // Option of the function.
+    let alignment = alignement_handle.join().unwrap() // Option from join.
+                                            .unwrap(); // Option from the function.
+
+    PicardMetrics::new(insert, alignment)
+}
+
