@@ -200,12 +200,12 @@ pub fn parse_record(input: String) -> Option<VCFRecord> {
 pub fn parse_vcf_file(input: String) -> Vec<VCFRecord> {
     let f = File::open(input).unwrap();
     let file = BufReader::new(&f);
-    file.lines().filter_map(|line| parse_record(line.unwrap())).collect()
+    file.lines().into_iter().filter_map(|line| parse_record(line.unwrap())).collect()
 }
 
 // TODO(gamazeps): make a typed string for Samples
 pub fn group_by_sample(records: Vec<VCFRecord>) -> HashMap<String, Vec<VCFRecord>> {
-    records.iter().fold(HashMap::new(), |mut m, v| {
+    records.into_iter().fold(HashMap::new(), |mut m, v| {
         let sample = match v.info.get("SAMPLE") {
             Some(&InfoField::SAMPLE(ref s)) => s.clone(),
             _ => panic!("Wrong data inside the SAMPLE field for record {:?}", v)

@@ -7,18 +7,18 @@ mod vcf_record;
 use vcf_record::{group_by_sample, parse_vcf_file};
 
 fn main() {
-    let records = parse_vcf_file("../data/PHASE3_SV_NA12878.vcf".to_owned());
-    //let records = parse_vcf_file(
-    //    "/data/fraimund/ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study\
-    //    /estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf\
-    //    /estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37\
-    //    .submitted.variant_call.germline.vcf".to_owned()
-    //);
+    //let records = parse_vcf_file("../data/PHASE3_SV_NA12878.vcf".to_owned());
+    let records = parse_vcf_file(
+        "/data/fraimund/ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study\
+        /estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf\
+        /estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37\
+        .submitted.variant_call.germline.vcf".to_owned()
+    );
 
     let count = records.len();
     println!("Records: {}", count);
 
-    for (k, v) in group_by_sample(records).iter() {
+    for (k, v) in group_by_sample(records).into_iter() {
         println!("{}: {} variants", k, v.len());
     }
 
