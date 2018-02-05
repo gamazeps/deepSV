@@ -1,4 +1,5 @@
 # DeepSV
+[![Build Status](https://travis-ci.org/gamazeps/deepSV.svg?branch=master)](https://travis-ci.org/gamazeps/deepSV)
 
 Structural Variant caller based on deep learning.
 
