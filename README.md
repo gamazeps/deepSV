@@ -10,15 +10,15 @@ This will probably be constituted of multiple languages and binaries.
 
 ### One-liner
 
+A working installation of rust is needed for running the data generation.
+
 ```bash
 curl https://sh.rustup.rs -sSf | sh
 source $HOME/.cargo/env
 ```
 
-### Explanations
-
-- In order to build the `preproc` binary you will need to have `cargo` installed you can get it
-  with.
+Note thqt you also need to have `java`, `picardtools` and `samtools` installed for the many
+calls to bioinformatics tool (before we reimplement them in rust of course).
 
 ## Build
 
