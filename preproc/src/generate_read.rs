@@ -41,8 +41,4 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
         buffer.write(&output.stdout);
         buffer.sync_all().expect("should be able to sync the data");
     }
-
-
-    //samtools view  "1:4204668-4204717" > toto
-
 }
