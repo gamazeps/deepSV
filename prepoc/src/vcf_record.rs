@@ -54,6 +54,10 @@ impl VCFRecord {
     pub fn chromosome(&self) -> String {
         self.chromosome.clone()
     }
+
+    pub fn id(&self) -> String {
+        self.id.clone()
+    }
 }
 
 /// Fields here follow the ones from the

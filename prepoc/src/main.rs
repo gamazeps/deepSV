@@ -6,12 +6,12 @@ mod vcf_record;
 mod generate_read;
 mod consts;
 
-use consts::NA12878_VCF;
+use consts::NA12878_VCF_PATH;
 use vcf_record::{parse_vcf_file};
 use generate_read::{generate_reads_for_na12878};
 
 fn main() {
-    let records = parse_vcf_file(NA12878_VCF.to_owned());
+    let records = parse_vcf_file(NA12878_VCF_PATH.to_owned());
 
     let count = records.len();
     println!("Records: {}", count);
