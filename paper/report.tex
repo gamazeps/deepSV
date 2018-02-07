@@ -1,17 +1,5 @@
 \documentclass{article}
 
-% if you need to pass options to natbib, use, e.g.:
-% \PassOptionsToPackage{numbers, compress}{natbib}
-% before loading nips_2017
-%
-% to avoid loading the natbib package, add option nonatbib:
-% \usepackage[nonatbib]{nips_2017}
-
-% \usepackage{nips_2017}
-
-% to compile a camera-ready version, add the [final] option, e.g.:
-% \usepackage[final]{nips_2017}
-
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
 \usepackage{hyperref}       % hyperlinks
@@ -21,17 +9,7 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 
-\title{Formatting instructions for NIPS 2017}
-
-% The \author macro works with any number of authors. There are two
-% commands used to separate the names and addresses of multiple
-% authors: \And and \AND.
-%
-% Using \And between authors leaves it to LaTeX to determine where to
-% break the lines. Using \AND forces a line break at that point. So,
-% if LaTeX puts 3 of 4 authors names on the first line, and the last
-% on the second line, try using \AND instead of \And before the third
-% author name.
+\title{DeepSV: a deep learning based variant scorer}
 
 \author{
   Félix Raimundo\\
@@ -63,37 +41,134 @@
 }
 
 \begin{document}
-% \nipsfinalcopy is no longer used
 
 \maketitle
 
 \begin{abstract}
-  In this paper, we present 
+  In this paper, we present DeepSV, a deep learning based method for classifying
+  potential genetic variants into true variants or non false positive.
+  
+  Indeed in the task of variant calling, the general pipeline consists of two major tasks,
+  first identifying regions that are likely to contain a variant (candidates), and the second
+  is to classify these candidates as either real variants or false positives.
+  
+  We identified a region of fixed size that contains enough signal to make classification
+  with deep learning method. 
 \end{abstract}
 
-\section{Submission of papers to NIPS 2017}
-\subsection{Style}
-\subsection{Retrieval of style files}
+\section{Properties of the data}
 
-\section{General formatting instructions}
+\paragraph{Property 1} The distance between two reads of a pair, called insert size, follows a normal distribution.
+\paragraph{Property 2} The length of the reads, called read size, follows a normal distribution.
 
-\section{Headings: first level}
-\subsection{Headings: second level}
-\subsubsection{Headings: third level}
-\paragraph{Paragraphs} paragraph
 
-\section{Citations, figures, tables, references}
-\subsection{Citations within the text}
-\subsection{Footnotes}
-\subsection{Figures}
-\subsection{Tables}
+\subsection{Types of signals}
 
-\section{Final instructions}
+There are basically 4 signals used for structural variant calling:
 
-\section{Preparing PDF files}
-\subsection{Margins in \LaTeX{}}
-\subsubsection*{Acknowledgments}
+\begin{itemize}
+	\item Assembly based, which are rare outside of long read technologies
+	\item Read count, rarely used alone and only works for imbalanced variants. It basically consists
+of looking at the number of reads at a particular location, more reads implies duplication, less
+reads implies deletion.
+	\item Split reads, use unmapped reads and try to map them around suspected variants (by splitting them
+in two or three if needed).
+	\item Paired reads, use pairs of mapped reads. By looking at the distance between them and their
+orientation we can guess when there are likely SVs
+\end{itemize}
 
-\section*{References}
+In the case of deepSV we plan on using PR and RC signals for scoring the variants, SR will only
+be used for breakpoint location.
+
+\subsection{Anomalous paired reads}
+
+Anomalous read pairs (ARP) are read pairs that do not have the normal orientation or distance.
+These reads need to happen around a breakpoint, and have one read on each side.
+
+Indeed, if one read was on the breakpoint, it could not be mapped (it can technically be only
+a little bit on the breakpoint, depending on the mapping quality).
+
+Respectively, if both reads were on a side of a breakpoint, they would be mapped normaly and would
+thus not be caught as anomalous.
+
+\paragraph{Lemna 1}  With ARPs there is, by construction, a breakpoint between the two reads.
+
+\subsubsection{Deletion}
+
+\begin{verbatim}
+target:  ---------       b       -------------
+ref:     --------- b1 ******* b2 -------------
+
+where:
+b is breakpoint
+**** is deleted region
+\end{verbatim}
+
+Here reads around the breakpoint b will be mapped farther apart than expected on the reference
+genome.
+
+\paragraph{Lemna 2} Once again by definition of ARP, there is one read on each side of the breakpoint b, thus all reads in ARPs will be at most \verb|read_size + insert_size| away from the breakpoint, in the target genome.
+
+Remembering properties 1 and 2, this tells us that we can have a boundary of fixed size in which
+we can expect to catch all ARPs around a breakpoint.
+
+\paragraph{Lemna 3} Respectively, should we have a group of ARPs supporting the same deletion we can say with a known confidence interval, that most ARPs to the left of the breakpoint b1 will be contained within \verb|insert_size + read_size| of the beginning of the leftmost supporting read. The same follows for the reads on the right of the breakpoint b2.
+
+\subsubsection{Inversion} 
+
+\begin{verbatim}
+target: ->->->->->->->-> b1 <-<-<-<-<-<-<- b2 ->->->->->->->->
+ref:    ->->->->->->->->    ->->->->->->->    ->->->->->->->->
+
+where b1 and b2 are the two breakpoints
+\end{verbatim}
+
+Here ARPs are pairs where one read is in the inversed region and the other
+is in the regular one (i.e. either one read left of b1 or one read right of b2). Indeed reads
+between b1 and b2 will be mapped properly (because BWA is not sensitive to the order of the reads).
+
+Reads in the inversed region will be mapped in the wrong direction, and farther away
+than expected (as the region is inversed they will be moved closer to the other breakpoint).
+
+We can see that if one read is left of b1, the other one will be mapped close to
+b2 inside the inversed region and in the wrong direction, and that if one read is to the right
+of b2, the other one will be mapped close to b1 in the inversed region and in the wrong direction
+too.
+
+We can also see by using properties 1 and 2, that reads outside the inversed region will be at most
+\verb|insert_size + read_size| away from the breakpoints and that the same is true for reads inside
+the inversed region.
+
+\paragraph{Lemna 4} ARPs supporting an inversion will be distributed around the two
+breakpoints within \verb|2*(insert_size + read_size)|.
+
+\paragraph{Lemna 3} Respectively, should we have a group of ARPs supporting the same inversion we can say with a known confidence interval, that most ARPs around the left breakpoint will be contained within \verb|2 * (insert_size + read_size)| of the beginning of the leftmost supporting read. The same is trivially true for the right breakpoint.
+
+\subsubsection{Tandem Duplication}
+
+\begin{verbatim}
+target: -------- b1 +++++++ b +++++++ b1 ----------
+ref:    --------    d1   +++++++   d2    ----------
+\end{verbatim}
+
+Here ARPs, are pairs that have one read on each side of breakpoint b, indeed
+read pairs fully contained between b1 and b or b and b2, will be mapped properly on the
+duplicated region.
+
+\paragraph{Lemna 6} ARPs are aligned in the wrong direction (\verb|<- ->| instead of \verb|-> <-| for example), and inside the duplicated region, one within \verb|insert_size + read_size| to the right of d1, the other within \verb|insert_size + read_size| left of d2.
+The read count in the duplicated region will be about the double of outside the duplicated region.
+
+\paragraph{Lemna 7} It follows that should a region be duplicated more than once, the ARPs will be distributed the same way as with tandem duplication (except for higher read count and more ARPs).
+
+\subsection{Conclusion}
+
+\paragraph{Theorem 1} Putting all the lemnas together we can conclude that given a set of structural variants, there are two windows of size \verb|2 * (insert_size + read_size)| each, centered on the two breakpoints in the reference genome that contains most of the ARPs that will support it.
+
+\paragraph{Theorem 2} Given a type of variant and a set of supporting ARPs, we can construct two windows of size \verb|2 * (insert_size + read_size)| that will contain the breakpoints in the reference genome.
+
+\paragraph{Note} For tandem CNVs (and deletions) windows of size \verb|insert_size + read_size| would have sufficed to contain all the ARPs, however they would not have contained reads outside of the duplicated area (inside the deleted area), which would make us lose the RC information.
+Taking larger windows also allows us to have a single window size for all our variants, and thus using the same model for all the variants.
+
+\paragraph{Note} All the window sizes given here assumed that the reads and inserts were of the same size, when we know that they are variable, adding a few standards deviations will allow us to catch the read pairs with higher insert size or read size.
 
 \end{document}
