@@ -46,15 +46,13 @@
 \maketitle
 
 \begin{abstract}
-  In this paper, we present DeepSV, a deep learning based method for classifying
-  potential genetic variants into true variants or non false positive.
-  
-  Indeed in the task of variant calling, the general pipeline consists of two major tasks,
-  first identifying regions that are likely to contain a variant (candidates), and the second
-  is to classify these candidates as either real variants or false positives.
+  In this paper, we present DeepSV, a deep learning based method for scoring the likelihood that candidates variants are true variants.
   
   We identified a region of fixed size that contains enough signal to make classification
-  with deep learning method. 
+  with deep learning methods, and thus allowing us to move away from the previous methods
+  based on logistic regression applied on few hand-crafted features.
+  
+  We acknowledge that our method will be less interpretable, but we hope that the bioinformatics community will be convinced by the higher precision and recall offered by our method. 
 \end{abstract}
 
 \section{Properties of the data}
@@ -92,23 +90,21 @@ a little bit on the breakpoint, depending on the mapping quality).
 Respectively, if both reads were on a side of a breakpoint, they would be mapped normaly and would
 thus not be caught as anomalous.
 
-\paragraph{Lemna 1}  With ARPs there is, by construction, a breakpoint between the two reads.
+\paragraph{Lemma 1}  With ARPs there is, by construction, a breakpoint between the two reads.
 
 \subsubsection{Deletion}
 
-\begin{figure}[h]
 \includegraphics[width=\textwidth]{DeletionPairedReads}
-\end{figure}
 
 Here reads around the breakpoint b will be mapped farther apart than expected on the reference
 genome.
 
-\paragraph{Lemna 2} Once again by definition of ARP, there is one read on each side of the breakpoint b, thus all reads in ARPs will be at most \verb|read_size + insert_size| away from the breakpoint, in the target genome.
+\paragraph{Lemma 2} Once again by definition of ARP, there is one read on each side of the breakpoint b, thus all reads in ARPs will be at most \verb|read_size + insert_size| away from the breakpoint, in the target genome.
 
 Remembering properties 1 and 2, this tells us that we can have a boundary of fixed size in which
 we can expect to catch all ARPs around a breakpoint.
 
-\paragraph{Lemna 3} Respectively, should we have a group of ARPs supporting the same deletion we can say with a known confidence interval, that most ARPs to the left of the breakpoint b1 will be contained within \verb|insert_size + read_size| of the beginning of the leftmost supporting read. The same follows for the reads on the right of the breakpoint b2.
+\paragraph{Lemma 3} Respectively, should we have a group of ARPs supporting the same deletion we can say with a known confidence interval, that most ARPs to the left of the breakpoint b1 will be contained within \verb|insert_size + read_size| of the beginning of the leftmost supporting read. The same follows for the reads on the right of the breakpoint b2.
 
 \subsubsection{Inversion} 
 
@@ -135,30 +131,27 @@ We can also see by using properties 1 and 2, that reads outside the inversed reg
 \verb|insert_size + read_size| away from the breakpoints and that the same is true for reads inside
 the inversed region.
 
-\paragraph{Lemna 4} ARPs supporting an inversion will be distributed around the two
+\paragraph{Lemma 4} ARPs supporting an inversion will be distributed around the two
 breakpoints within \verb|2*(insert_size + read_size)|.
 
-\paragraph{Lemna 3} Respectively, should we have a group of ARPs supporting the same inversion we can say with a known confidence interval, that most ARPs around the left breakpoint will be contained within \verb|2 * (insert_size + read_size)| of the beginning of the leftmost supporting read. The same is trivially true for the right breakpoint.
+\paragraph{Lemma 3} Respectively, should we have a group of ARPs supporting the same inversion we can say with a known confidence interval, that most ARPs around the left breakpoint will be contained within \verb|2 * (insert_size + read_size)| of the beginning of the leftmost supporting read. The same is trivially true for the right breakpoint.
 
 \subsubsection{Tandem Duplication}
 
-\begin{verbatim}
-target: -------- b1 +++++++ b +++++++ b1 ----------
-ref:    --------    d1   +++++++   d2    ----------
-\end{verbatim}
+\includegraphics[width=\textwidth]{DuplicationReadPairs}
 
 Here ARPs, are pairs that have one read on each side of breakpoint b, indeed
 read pairs fully contained between b1 and b or b and b2, will be mapped properly on the
 duplicated region.
 
-\paragraph{Lemna 6} ARPs are aligned in the wrong direction (\verb|<- ->| instead of \verb|-> <-| for example), and inside the duplicated region, one within \verb|insert_size + read_size| to the right of d1, the other within \verb|insert_size + read_size| left of d2.
+\paragraph{Lemma 6} ARPs are aligned in the wrong direction (\verb|<- ->| instead of \verb|-> <-| for example), and inside the duplicated region, one within \verb|insert_size + read_size| to the right of d1, the other within \verb|insert_size + read_size| left of d2.
 The read count in the duplicated region will be about the double of outside the duplicated region.
 
-\paragraph{Lemna 7} It follows that should a region be duplicated more than once, the ARPs will be distributed the same way as with tandem duplication (except for higher read count and more ARPs).
+\paragraph{Lemma 7} It follows that should a region be duplicated more than once, the ARPs will be distributed the same way as with tandem duplication (except for higher read count and more ARPs).
 
 \subsection{Conclusion}
 
-\paragraph{Theorem 1} Putting all the lemnas together we can conclude that given a set of structural variants, there are two windows of size \verb|2 * (insert_size + read_size)| each, centered on the two breakpoints in the reference genome that contains most of the ARPs that will support it.
+\paragraph{Theorem 1} Putting all the lemmas together we can conclude that given a set of structural variants, there are two windows of size \verb|2 * (insert_size + read_size)| each, centered on the two breakpoints in the reference genome that contains most of the ARPs that will support it.
 
 \paragraph{Theorem 2} Given a type of variant and a set of supporting ARPs, we can construct two windows of size \verb|2 * (insert_size + read_size)| that will contain the breakpoints in the reference genome.
 
