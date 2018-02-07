@@ -108,12 +108,7 @@ we can expect to catch all ARPs around a breakpoint.
 
 \subsubsection{Inversion} 
 
-\begin{verbatim}
-target: ->->->->->->->-> b1 <-<-<-<-<-<-<- b2 ->->->->->->->->
-ref:    ->->->->->->->->    ->->->->->->->    ->->->->->->->->
-
-where b1 and b2 are the two breakpoints
-\end{verbatim}
+\includegraphics[width=\textwidth]{InversionReadPairs}
 
 Here ARPs are pairs where one read is in the inversed region and the other
 is in the regular one (i.e. either one read left of b1 or one read right of b2). Indeed reads
