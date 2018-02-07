@@ -8,6 +8,7 @@
 \usepackage{amsfonts}       % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
+\usepackage{graphicx}
 
 \title{DeepSV: a deep learning based variant scorer}
 
@@ -95,14 +96,9 @@ thus not be caught as anomalous.
 
 \subsubsection{Deletion}
 
-\begin{verbatim}
-target:  ---------       b       -------------
-ref:     --------- b1 ******* b2 -------------
-
-where:
-b is breakpoint
-**** is deleted region
-\end{verbatim}
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{DeletionPairedReads}
+\end{figure}
 
 Here reads around the breakpoint b will be mapped farther apart than expected on the reference
 genome.
