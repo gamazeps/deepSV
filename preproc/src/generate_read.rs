@@ -16,6 +16,10 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
         Some(InfoField::SAMPLE("NA12878".to_owned()))
     );
 
+    let median_insert_size = 400;
+    let median_read_size = 100;
+    let window = median_insert_size + median_read_size;
+
     if !record.has_ci() {
         let end = match record.get_info("END".to_owned()) {
             Some(InfoField::END(e)) => e,
@@ -26,7 +30,8 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
         let mut c: Command = Command::new("samtools");
         c.arg("view")
          .arg(NA12878_BAM_PATH)
-         .arg(format!("{}:{}-{}", record.chromosome(), record.pos().unwrap(), end));
+         .arg(format!("{}:{}-{}",
+                      record.chromosome(), record.pos().unwrap() - window, end) + window);
         println!("{:?}", c);
 
 
