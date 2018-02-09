@@ -23,7 +23,7 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
     if !record.has_ci() {
         let end = match record.get_info("END".to_owned()) {
             Some(InfoField::END(e)) => e,
-            _ => panic!("END fieled should contain a pos")
+            _ => panic!("END field should contain a pos")
         };
 
         // TODO(gamazeps): this is a horrible interraction with the borrowchecker.
@@ -31,19 +31,22 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
         c.arg("view")
          .arg(NA12878_BAM_PATH)
          .arg(format!("{}:{}-{}",
-                      record.chromosome(), record.pos().unwrap() - window, end) + window);
-        println!("{:?}", c);
-
+                      record.chromosome(), record.pos().unwrap() - window, end + window));
 
         let output = c.output().expect("Failed to execute process");
-        println!("status: {}", output.status);
-        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+
+        let sample = match record.get_info("SAMPLE".to_owned()) {
+            Some(InfoField::SAMPLE(e)) => e,
+            _ => panic!("SAMPLE field should contain a sample")
+        };
 
         // TODO(gamazeps): use https://github.com/rust-lang/rust/pull/42133/files for the output
         // This is currently shady as fuck...
-        let mut buffer = File::create(format!("{}.sam", record.id()))
+        let mut buffer = File::create(format!("../data/supporting_reads/{}/{}.sam",
+                                              sample,
+                                              record.id()))
             .expect("should be able to create a file");
-        buffer.write(&output.stdout);
+        buffer.write(&output.stdout).expect("should be able to write the data");
         buffer.sync_all().expect("should be able to sync the data");
     }
 }
