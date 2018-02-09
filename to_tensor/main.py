@@ -33,6 +33,7 @@ def draw_sam(fname):
                 "C": (241, 133, 39),
                 "G": (79, 158, 57),
                 "T": (199, 56, 44),
+                "N": (127, 127, 127),
              }
 
     for j, read in enumerate(content):
