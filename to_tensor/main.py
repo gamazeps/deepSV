@@ -15,12 +15,15 @@ def read_sam(fname):
 
 def draw_sam(fname):
     f = open(fname, "r")
-    content = [ugly_parse(record) for record in f.readlines()]
+    content = [ugly_parse(record) for record in f]
+
+    if len(content) is 0:
+        return # we need to be careful of empty files
 
     origin = content[0]["POS"]
     end    = content[-1]["POS"] + len(content[-1]["SEQ"])
-    l      = end - origin
-    w      = len(content)
+    w      = end - origin
+    l      = len(content)
 
     img  = Image.new("RGB", (w, l), (0, 0, 0))
     draw = ImageDraw.Draw(img, "RGB")
@@ -37,7 +40,7 @@ def draw_sam(fname):
         for i, base in enumerate(read["SEQ"]):
             draw.point((pos + i, j), values[base])
 
-    img.show()
+    img.save(fname + ".png")
 
 
 def ugly_parse(sam):
@@ -60,5 +63,5 @@ def ugly_parse(sam):
 
 if __name__ == "__main__":
     names = find_sam_files()
-    for fname in names[0:1]:
+    for fname in names:
         draw_sam(fname)
