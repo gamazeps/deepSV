@@ -39,13 +39,23 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
             Some(InfoField::SAMPLE(e)) => e,
             _ => panic!("SAMPLE field should contain a sample")
         };
+        let sv_type = match record.get_info("SVTYPE".to_owned()) {
+            Some(InfoField::SVTYPE(e)) => e,
+            _ => panic!("SVTYPE field should contain a type")
+        };
+
+        let fname = format!(
+            "../data/supporting_reads/{}/{}.{}.{}-{}.sam",
+            sample,
+            record.id(),
+            sv_type,
+            record.pos().unwrap(),
+            end
+        );
 
         // TODO(gamazeps): use https://github.com/rust-lang/rust/pull/42133/files for the output
         // This is currently shady as fuck...
-        let mut buffer = File::create(format!("../data/supporting_reads/{}/{}.sam",
-                                              sample,
-                                              record.id()))
-            .expect("should be able to create a file");
+        let mut buffer = File::create(fname).expect("should be able to create a file");
         buffer.write(&output.stdout).expect("should be able to write the data");
         buffer.sync_all().expect("should be able to sync the data");
     }
