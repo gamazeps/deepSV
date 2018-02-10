@@ -20,10 +20,14 @@ def draw_sam(fname):
     if len(content) is 0:
         return # we need to be careful of empty files
 
+    reads_id = set()
+    for r in content:
+        reads_id.add(r["QNAME"])
+
     origin = content[0]["POS"]
     end    = content[-1]["POS"] + len(content[-1]["SEQ"])
     w      = end - origin
-    l      = len(content)
+    l      = len(reads_id)
 
     img  = Image.new("RGB", (w, l), (0, 0, 0))
     draw = ImageDraw.Draw(img, "RGB")
@@ -36,8 +40,16 @@ def draw_sam(fname):
                 "N": (127, 127, 127),
              }
 
-    for j, read in enumerate(content):
+    row = 0
+    index = dict()
+    for read in content:
+        j = row
         pos = read["POS"] - origin
+        if read["QNAME"] in index:
+            j = index[read["QNAME"]]
+        else:
+            index[read["QNAME"]] = row
+            row += 1
         for i, base in enumerate(read["SEQ"]):
             draw.point((pos + i, j), values[base])
 
