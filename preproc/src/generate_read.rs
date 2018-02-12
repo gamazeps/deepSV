@@ -25,13 +25,17 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
             Some(InfoField::END(e)) => e,
             _ => panic!("END field should contain a pos")
         };
+        let pos = record.pos().unwrap();
 
         // TODO(gamazeps): this is a horrible interraction with the borrowchecker.
         let mut c: Command = Command::new("samtools");
         c.arg("view")
          .arg(NA12878_BAM_PATH)
+         .arg("-M")
          .arg(format!("{}:{}-{}",
-                      record.chromosome(), record.pos().unwrap() - window, end + window));
+                      record.chromosome(), pos - window, pos + window))
+         .arg(format!("{}:{}-{}",
+                      record.chromosome(), end - window, end + window));
 
         let output = c.output().expect("Failed to execute process");
 

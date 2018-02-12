@@ -39,6 +39,10 @@ impl VCFRecord {
         self.alt == alts
     }
 
+    pub fn is_simple(&self) -> bool {
+        self.alt.len() == 1
+    }
+
     pub fn has_ci(&self) -> bool {
         self.info.contains_key("CIEND") || self.info.contains_key("CIPOS")
     }

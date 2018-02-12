@@ -13,7 +13,7 @@ use generate_read::{generate_reads_for_na12878};
 fn main() {
     let records = parse_vcf_file(NA12878_VCF_PATH.to_owned());
 
-    for r in records.into_iter().take(20) {
+    for r in records.into_iter().filter(|record| record.is_simple() && !record.has_ci()).take(20) {
         generate_reads_for_na12878(r);
     }
 }
