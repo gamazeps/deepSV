@@ -1,6 +1,12 @@
 import glob
 from PIL import Image, ImageDraw
 
+median_read_size = 101
+median_insert_size = 400
+breakpoint_window = 2 * (median_read_size + median_insert_size)
+split_marker = 10
+image_w = 2 * breakpoint_window + split_marker
+
 def find_sam_files():
     return glob.glob("../data/supporting_reads/NA12878/*sam")
 
@@ -26,10 +32,10 @@ def draw_sam(fname):
 
     origin = content[0]["POS"]
     end    = content[-1]["POS"] + len(content[-1]["SEQ"])
-    w      = end - origin
-    l      = len(reads_id)
 
-    img  = Image.new("RGB", (w, l), (0, 0, 0))
+    l = len(reads_id)
+
+    img  = Image.new("RGB", (image_w, l), (0, 0, 0))
     draw = ImageDraw.Draw(img, "RGB")
 
     values = {
@@ -42,16 +48,39 @@ def draw_sam(fname):
 
     row = 0
     index = dict()
+    variant_size = end - origin
+    split_windows = variant_size > image_w
     for read in content:
         j = row
         pos = read["POS"] - origin
+
+        # We deal with case where we need to split the reads
+        if split_windows:
+            if pos > (variant_size - breakpoint_window):
+                pos = breakpoint_window + split_marker + pos - (variant_size - breakpoint_window)
+                #assert(pos + len(read["SEQ"]) < variant_size)
+            else:
+                #assert(pos + len(read["SEQ"]) < breakpoint_window)
+                pass
+        else:
+            pos += (image_w - variant_size) / 2
+
+        # Needed for pairing read pairs together
         if read["QNAME"] in index:
             j = index[read["QNAME"]]
         else:
             index[read["QNAME"]] = row
             row += 1
+
         for i, base in enumerate(read["SEQ"]):
             draw.point((pos + i, j), values[base])
+
+    # We draw the split marker
+    if split_windows:
+        for i in range(breakpoint_window, breakpoint_window + split_marker):
+            for j in range(0, l):
+                draw.point((i, j), (255, 0, 0))
+
 
     img.save(fname + ".png")
 
