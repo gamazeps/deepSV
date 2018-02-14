@@ -218,7 +218,7 @@ pub fn parse_record(input: String) -> Option<VCFRecord> {
 }
 
 pub fn parse_vcf_file(input: String) -> Vec<VCFRecord> {
-    let f = File::open(input).unwrap();
+    let f = File::open(input).expect("Unable to open the given VCF file");
     let file = BufReader::new(&f);
     file.lines().into_iter().filter_map(|line| parse_record(line.unwrap())).collect()
 }

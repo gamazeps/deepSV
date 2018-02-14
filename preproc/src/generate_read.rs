@@ -6,7 +6,7 @@ use std::fs::File;
 use std::process::Command;
 
 use vcf_record::{InfoField, VCFRecord};
-use consts::NA12878_BAM_PATH;
+use consts::{NA12878_BAM_PATH, REFERENCE_FA};
 
 
 // TODO(gamazeps) do not hardcode the naming of the files for the samples
@@ -37,7 +37,7 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
          .arg(format!("{}:{}-{}",
                       record.chromosome(), end - window, end + window));
 
-        let output = c.output().expect("Failed to execute process");
+        let output = c.output().expect("Failed to execute samtools view");
 
         let sample = match record.get_info("SAMPLE".to_owned()) {
             Some(InfoField::SAMPLE(e)) => e,
@@ -59,8 +59,21 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
 
         // TODO(gamazeps): use https://github.com/rust-lang/rust/pull/42133/files for the output
         // This is currently shady as fuck...
-        let mut buffer = File::create(fname).expect("should be able to create a file");
-        buffer.write(&output.stdout).expect("should be able to write the data");
-        buffer.sync_all().expect("should be able to sync the data");
+        let mut buffer = File::create(fname.clone()).expect("Failed to create {}");
+        buffer.write(&output.stdout).expect("Failed to write the data to {}");
+        buffer.sync_all().expect("Failed to sync {} to disk");
+
+        let mut ref_c: Command = Command::new("samtools");
+        c.arg("faidx")
+         .arg(REFERENCE_FA)
+         .arg(format!("{}:{}-{}",
+                      record.chromosome(), pos - window, pos + window))
+         .arg(format!("{}:{}-{}",
+                      record.chromosome(), end - window, end + window));
+        let output = ref_c.output().expect("Failed to execute samtools faidx");
+        let fname = format!("{}.fa", fname);
+        let mut buffer = File::create(fname).expect("Failed to create {}");
+        buffer.write(&output.stdout).expect("Failed to write the data to {}");
+        buffer.sync_all().expect("Failed to sync {} to disk");
     }
 }
