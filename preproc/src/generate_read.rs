@@ -64,7 +64,7 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
         buffer.sync_all().expect("Failed to sync {} to disk");
 
         let mut ref_c: Command = Command::new("samtools");
-        c.arg("faidx")
+        ref_c.arg("faidx")
          .arg(REFERENCE_FA)
          .arg(format!("{}:{}-{}",
                       record.chromosome(), pos - window, pos + window))
