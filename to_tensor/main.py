@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw
 import cPickle
 
 median_read_size = 101
-median_insert_size = 400
+median_insert_size = 500
 breakpoint_window = 2 * (median_read_size + median_insert_size)
 split_marker = 10
 image_w = 2 * breakpoint_window + split_marker
@@ -19,6 +19,17 @@ def read_sam(fname):
         inf = ugly_parse(c)
         print(inf["POS"], len(inf["SEQ"]))
 
+
+def get_pos(pos, variant_size, split_windows):
+    # We deal with case where we need to split the reads
+    if split_windows:
+        if pos > (variant_size - breakpoint_window):
+            pos = breakpoint_window + split_marker + pos - (variant_size - breakpoint_window)
+        else:
+            pass
+    else:
+        pos += (image_w - variant_size) / 2
+    return pos
 
 def draw_sam(fname):
     f = open(fname, "r")
@@ -36,6 +47,8 @@ def draw_sam(fname):
 
     l = len(reads_id)
 
+    print(l, len(content), len(content) - l, fname + ".png")
+
     img  = Image.new("RGB", (image_w, l), (0, 0, 0))
     draw = ImageDraw.Draw(img, "RGB")
 
@@ -52,26 +65,15 @@ def draw_sam(fname):
     variant_size = end - origin
     split_windows = variant_size > image_w
     for read in content:
-        j = row
-        pos = read["POS"] - origin
-
-        # We deal with case where we need to split the reads
-        if split_windows:
-            if pos > (variant_size - breakpoint_window):
-                pos = breakpoint_window + split_marker + pos - (variant_size - breakpoint_window)
-                #assert(pos + len(read["SEQ"]) < variant_size)
-            else:
-                #assert(pos + len(read["SEQ"]) < breakpoint_window)
-                pass
-        else:
-            pos += (image_w - variant_size) / 2
-
         # Needed for pairing read pairs together
+        j = row
         if read["QNAME"] in index:
             j = index[read["QNAME"]]
         else:
             index[read["QNAME"]] = row
             row += 1
+
+        pos = get_pos(read["POS"] - origin, variant_size, split_windows)
 
         for i, base in enumerate(read["SEQ"]):
             draw.point((pos + i, j), values[base])
@@ -81,7 +83,6 @@ def draw_sam(fname):
         for i in range(breakpoint_window, breakpoint_window + split_marker):
             for j in range(0, l):
                 draw.point((i, j), (255, 0, 0))
-
 
     img.save(fname + ".png")
 
