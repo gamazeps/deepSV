@@ -9,6 +9,8 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{graphicx}
+\usepackage{cite}
+
 
 \title{DeepSV: a deep learning based variant scorer}
 
@@ -56,6 +58,9 @@
 \end{abstract}
 
 \section{Properties of the data}
+
+\cite{lin_making_2015}
+and \cite{poplin_creating_2016}
 
 \paragraph{Property 1} The distance between two reads of a pair, called insert size, follows a normal distribution.
 \paragraph{Property 2} The length of the reads, called read size, follows a normal distribution.
@@ -153,6 +158,11 @@ The read count in the duplicated region will be about the double of outside the 
 \paragraph{Note} For tandem CNVs (and deletions) windows of size \verb|insert_size + read_size| would have sufficed to contain all the ARPs, however they would not have contained reads outside of the duplicated area (inside the deleted area), which would make us lose the RC information.
 Taking larger windows also allows us to have a single window size for all our variants, and thus using the same model for all the variants.
 
-\paragraph{Note} All the window sizes given here assumed that the reads and inserts were of the same size, when we know that they are variable, adding a few standards deviations will allow us to catch the read pairs with higher insert size or read size.
+\paragraph{Note} All the window sizes given here assumed that the reads and inserts were of the same size, when we know that they are variable, adding a few standards deviations will allow us to catch the read pairs with higher insert size or read size. \cite{pham_efficient_2018}
+
+\section*{References}
+
+\bibliography{deepSVbib.bib}{}
+\bibliographystyle{unsrt}
 
 \end{document}
