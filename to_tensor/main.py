@@ -1,5 +1,6 @@
 import glob
 from PIL import Image, ImageDraw
+import cPickle
 
 median_read_size = 101
 median_insert_size = 400
@@ -85,6 +86,19 @@ def draw_sam(fname):
     img.save(fname + ".png")
 
 
+def serialize_sam(fname):
+    f = open(fname, "r")
+    content = [ugly_parse(record) for record in f]
+
+    if len(content) is 0:
+        return # we need to be careful of empty files
+
+    cPickle.dump(content, open(fname + ".pckl", "w"))
+    copy = cPickle.load(open(fname + ".pckl", "r"))
+
+    assert(copy == content)
+
+
 def ugly_parse(sam):
     tokens = sam.split('\t')
     parsed = dict()
@@ -106,4 +120,4 @@ def ugly_parse(sam):
 if __name__ == "__main__":
     names = find_sam_files()
     for fname in names:
-        draw_sam(fname)
+        serialize_sam(fname)
