@@ -4,7 +4,10 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+extern crate serde;
+extern crate serde_json;
+
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct VCFRecord {
     chromosome: String,
     pos: Option<u64>,
@@ -66,7 +69,7 @@ impl VCFRecord {
 
 /// Fields here follow the ones from the
 /// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum VariantType {
     /// Copy number variable region.
     CNV,
@@ -110,7 +113,7 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
 
 /// Fields here follow the ones from the
 /// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum InfoField {
     /// ID is a dbVar accession.
     DBVARID,

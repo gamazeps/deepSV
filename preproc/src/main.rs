@@ -1,6 +1,9 @@
 /// File standards follow the description of https://github.com/samtools/hts-specs
 /// according to commit: 36576b330c81b0f40c37c97c6aa4529b488e48a1
 
+#[macro_use]
+extern crate serde_derive;
+
 mod picard_stats;
 mod vcf_record;
 mod generate_read;
