@@ -55,7 +55,7 @@
 \maketitle
 
 \begin{abstract}
-  In this paper, we present DeepSV, a deep learning based method for scoring the likelihood that a set of adherent read pairs are caused by a structural variant, by opposition to mapping or sequencing errors.
+  In this paper, we present DeepSV, a deep learning based method for scoring the likelihood that a set of anomalous read pairs are caused by a structural variant, by opposition to mapping or sequencing errors.
   
   We identified a region of fixed size that contains enough signal to make classification
   with deep learning methods, and thus allowing us to move away from the previous methods
@@ -70,7 +70,7 @@ relevant ones are copied here.
 \paragraph{Segment} A contiguous sequence or subsequence.
 \paragraph{Read} A raw sequence of DNA that comes off a sequencing machine.
 \paragraph{Coverage} Number of reads mapped at a specific location in the reference genome.
-\paragraph{Read Pair} Long sequence of DNA of which the sequencing machine reads the two extremities. Each of the two extremities are reads and are associated a direction and are separated by a distance called insert size.
+\paragraph{Read Pair} Long sequence of DNA of which the sequencing machine reads the two extremities. Each of the extremities are reads, are associated a direction, and are separated by a distance called insert size.
 
 Note: For the duration of this paper, we will assume that the two reads of a read pair are both directed to the center, i.e. the first read is directed from left to right, called forward, and the second right to left, called backward.
 
@@ -78,19 +78,17 @@ Note: For the duration of this paper, we will assume that the two reads of a rea
 
 In this paper we will be making the following two assumptions:
 
-\paragraph{Property 1} The distance between two reads of a read pair, called insert size, follows a normal distribution.
-\paragraph{Property 2} The length of reads, called read size, follows a normal distribution.
-
-Note: there are no guarantees that they are true, nevertheless they are a good approximation of reality and are used in most other variant callers (see \cite{ rausch_delly:_2012}, \cite{ye_pindel:_2009}, \cite{chen_manta:_2016}, \cite{handsaker_large_2015}, \cite{chen_breakdancer:_2009}).
-
+\paragraph{Assumption 1} The distance between two reads of a read pair, called insert size, follows a normal distribution when they are generated.
+\paragraph{Assumption 2} The length of reads, called read size, follows a normal distribution.\\
+Note: Empirical data is known not to verify theses assumptions, however they are a good approximation of reality and are used in most other variant callers (see \cite{ rausch_delly:_2012}, \cite{ye_pindel:_2009}, \cite{chen_manta:_2016}, \cite{handsaker_large_2015}, \cite{chen_breakdancer:_2009}).\\
 Note: The distance between two reads of a pair generated from a target genome can be different once the two reads are mapped on a reference genome, the analysis of that phenomenon is the basis of our study.
 
-\paragraph{Hypothesis 1}: During the rest of this document we will assume that the insert size and read size are constant when the reads are generated, indeed the two distribution have a low standard deviation, this approximation is thus sensible.
-All the future claims stay valid with this approximation, but would make the text much less readable.
+\paragraph{Simplification 1} During the rest of this document we will assume that the insert size and read size are constant when the reads are generated, indeed the two distribution have a low standard deviation relative to the mean, this approximation is thus sensible.\\
+All the future claims stay valid without this approximation, but would make the text much less readable by introducing many confidence intervals.
 
 Section \emph{Dealing with reality} will describe how we deal with real data, where these assumptions are not correct.
 
-\paragraph{Property 3} Because of properties 1 and 2, and hypothesis 1, it follows that the second pair of a read pair is fully contained within $[insert\_size, insert\_size + read\_size]$ of the end of the first one in the genome from which the reads are extracted.
+\paragraph{Property 1} Because of assumptions 1 and 2, and simplification 1, it follows that the second pair of a read pair is fully contained within $[insert\_size, insert\_size + read\_size]$ of the end of the first one in the genome from which the reads are extracted.
 
 \subsection{Structural Variants}
 
@@ -120,7 +118,7 @@ Likewise the balanced rearrangements are divided in two categories:
 
 In our study we will only work on deletions, tandem duplications, and inversions. We however believe that our method could be extended to work on the other types of variants (see \emph{Future Work}).
 
-\paragraph{Breakpoint} We call breakpoints the locations where structural rearrangements happen in the genome , there are:
+\paragraph{Breakpoint} We call breakpoints the locations where structural rearrangements happen in the genome being sequenced, there are:
 \begin{itemize}
     \item 1 in the case of deletions.
     \item $n$ for tandem duplications with $n$ duplicates.
@@ -134,10 +132,10 @@ In our study we will only work on deletions, tandem duplications, and inversions
 The current state of the art algorithms for finding structural variants are based on a mixture of the four following methods (see \cite{lin_making_2015} or \cite{sudmant_integrated_2015} for a deeper review):
 
 \begin{itemize}
-	\item Assembly based (AS), does \emph{de novo} assembly on regions suspected to contain an SV. They are rarely used as: assembly is computationally expensive, and not always possible in regions with repetitive sequences.
+	\item Assembly based (AS), does \emph{de novo} assembly on regions suspected to contain an SV. They are rarely used as: assembly is computationally expensive and not always possible in regions with repetitive sequences.
 	\item Read count (RC), observes the distribution of coverage in the genome. It can only detect CNVs as reads in translocations and inverted regions are properly mapped. Furthermore reads are not generated uniformly in the genome from which the reads come, it is thus not an optimal method alone.
 	\item Split reads (SR), uses reads that fall on the breakpoint. Those reads are unmapped, as part of them is in the rearrangement. These reads are split so that they can be mapped properly. As the split reads are smaller than regular reads they cannot always be mapped unambiguously.
-	\item Paired reads (PR), uses pairs of mapped reads that have an insert size far away from the mean insert size, or who do not have the expected orientation. This method is often used to identify regions that contain SV and followed by a finer analysis of the candidate.
+	\item Paired reads (PR), uses pairs of mapped reads that have an insert size far away from the mean insert size, or who do not have the expected orientation. This method is often used to identify regions that contain SV and followed by a finer analysis.
 \end{itemize}
 
 In the case of DeepSV we use paired reads to identify regions of interest and use a pattern recognition model on the selected regions to decide whether they contain an SV.
@@ -147,16 +145,16 @@ The next sections will explain what patterns we expect to find in these regions.
 
 \subsection{Anomalous paired reads}
 
-Anomalous read pairs (ARP) are read pairs that do not have the normal orientation or distance.
+Anomalous read pairs (ARP) are read pairs that do not have the normal orientation or insert size once mapped.
 
-\paragraph{Property 4}  Assuming no errors in the reads or mapping, ARPs contain a breakpoint between their two reads.
+\paragraph{Property 2}  Assuming no errors in the reads or mapping, ARPs contain a breakpoint between their two reads.
 
 Indeed, if one read was on the breakpoint, it could not be mapped as a part of it would be on a large rearrangement.
 
 Respectively, if both reads were the same side of a  breakpoint, they would be mapped normally and would
 thus not be caught as anomalous.
 
-\paragraph{Property 5} Because of properties 3 and 4 we can conclude that all reads in ARPs will be at most $read\_size + insert\_size$ away from the breakpoint in the genome that generated the reads.
+\paragraph{Property 3} Because of properties 1 and 2 we can conclude that all reads in ARPs will be at most $read\_size + insert\_size$ away from the breakpoint in the genome that generated the reads.
 
 \subsubsection{Deletion}
 
@@ -166,65 +164,84 @@ In the case of deletions there is a single breakpoint $b$, the deleted region is
 
 Assuming no errors in the reads or mapping:
 \begin{itemize}
-    \item reads to the left of b are mapped left of b1 in the reference genome.
-    \item reads to the right of b are mapped to the right of b2 in the reference genome.
+    \item reads originally left of $k$bp from b will be mapped at $[b1 - k - read\_size, b1 - k]$ instead of $[b - k - read\_size, b - k]$ and in the correct direction.
+    \item reads originally right of $k$bp from b will be mapped at $[b2 + k, b2 + k + read\_size]$ instead of $[b + k, b + k + read\_size]$ and in the correct direction.
     \item no reads should be mapped in $[b1, b2]$.
 \end{itemize}
 
-We can conclude that given a set of ARPs supporting a deletion, b1 will be contained within $insert\_size + read\_size$ of the leftmost read, and b2 will be contained within $insert\_size + read\_size$ of the rightmost read.
+In the case of ARPs, by using property 3, we know that $k < insert\_size$, we can thus conclude that all ARPs will be contained within $[b1 - insert\_size - read\_size, b1] \cup [b2 + insert\_size + read\_size, b2]$,
+these reads will have an expected distance of $insert\_size + (b2 - b1)$.
 
-Furthermore, the previous observations, allows us to tell that all ARPs will be contained in that region. If we also add some content from the deleted section we can observe the coverage there and compare it to the coverage outside the deleted region.
+By using property 3, we can conclude that given a set of ARPs supporting a deletion, b1 will be contained within $insert\_size + read\_size$ of the leftmost read, and b2 will be contained within $insert\_size + read\_size$ of the rightmost read.
 
-We have thus constructed two intervals containing all the ARPs and RC information, these two intervals' sizes are only dependant on the insert size and read size, not the size of the deletion. 
+We have thus constructed two intervals containing all the ARPs and RC information, these two intervals' sizes are only dependent on the insert size and read size, not the size of the deletion. 
 
 \subsubsection{Inversion} 
 
 \includegraphics[width=\textwidth]{InversionReadPairs}
 
-Here ARPs are pairs where one read is in the inversed region and the other
-is in the regular one (i.e. either one read left of b1 or one read right of b2). Indeed reads
-between b1 and b2 will be mapped properly (because BWA is not sensitive to the order of the reads).
+In the case of inversions there are two breakpoints b1 and b2, the inverted region is $[b1, b2]$.\\
+ARPs will be read pairs with one read to the left of b1 and the other in the inverted region, or read pairs with one read to the right of b2 and the other in the inverted region.
 
-Reads in the inversed region will be mapped in the wrong direction, and farther away
-than expected (as the region is inversed they will be moved closer to the other breakpoint).
+Assuming no errors in the reads or mapping:
+\begin{itemize}
+    \item reads originally right of $k$bp from b1 will be mapped at $[b2 - k - read\_size, b2 - k]$ instead of $[b1 + k, b1 + k + read\_size]$ and in the opposite direction.
+    \item reads originally left of $k$bp from b2 will be mapped at $[b1 + k, b1 + k + read\_size]$ instead of $[b2 - k - read\_size, b2 - k]$ and in the opposite direction.
+    \item there is no variation in coverage, except at the breakpoints were the reads will not be mapped.
+\end{itemize}
 
-We can see that if one read is left of b1, the other one will be mapped close to
-b2 inside the inversed region and in the wrong direction, and that if one read is to the right
-of b2, the other one will be mapped close to b1 in the inversed region and in the wrong direction
-too.
 
-We can also see by using properties 1 and 2, that reads outside the inversed region will be at most
-\verb|insert_size + read_size| away from the breakpoints and that the same is true for reads inside
-the inversed region.
+In the case of ARPs, by using property 3, we know that $k < insert\_size$, we can thus conclude that all ARPs will be contained within $[b1 - insert\_size - read\_size, b1 + insert\_size + read\_size] \cup [b2 - insert\_size - read\_size, b2 + insert\_size + read\_size]$
 
-\paragraph{Lemma 4} ARPs supporting an inversion will be distributed around the two
-breakpoints within \verb|2*(insert_size + read_size)|.
+By using property 3, we can conclude that given a set of ARPs supporting an inversion, b1 will be contained within $insert\_size + read\_size$ of the leftmost read, and b2 will be contained within $insert\_size + read\_size$ of the rightmost read.
 
-\paragraph{Lemma 3} Respectively, should we have a group of ARPs supporting the same inversion we can say with a known confidence interval, that most ARPs around the left breakpoint will be contained within \verb|2 * (insert_size + read_size)| of the beginning of the leftmost supporting read. The same is trivially true for the right breakpoint.
+We have thus constructed two intervals containing all the ARPs and RC information, these two intervals' sizes are only dependent on the insert size and read size, not the size of the inversion. 
+
+Note: This only works for inversions larger than $insert\_size + read\_size$.
 
 \subsubsection{Tandem Duplication}
 
 \includegraphics[width=\textwidth]{DuplicationReadPairs}
 
-Here ARPs, are pairs that have one read on each side of breakpoint b, indeed
-read pairs fully contained between b1 and b or b and b2, will be mapped properly on the
-duplicated region.
+In the case of a tandem duplication with n duplicates, there are n breakpoints $b^1$,...,$b^n$, the duplicated region is $[d1, d2]$. The breakpoints are at the junction between duplicates.\\
+Note: For the sake of clarity there is only one duplicate in the figure.
 
-\paragraph{Lemma 6} ARPs are aligned in the wrong direction (\verb|<- ->| instead of \verb|-> <-| for example), and inside the duplicated region, one within \verb|insert_size + read_size| to the right of d1, the other within \verb|insert_size + read_size| left of d2.
-The read count in the duplicated region will be about the double of outside the duplicated region.
+In the case of tandem duplications, the ARPs are read pairs with, with $i\in[1, n]$, have one read left of $b^i$ and one read right of $b^i$.
 
-\paragraph{Lemma 7} It follows that should a region be duplicated more than once, the ARPs will be distributed the same way as with tandem duplication (except for higher read count and more ARPs).
+Assuming no errors in the reads or mapping:
+\begin{itemize}
+    \item reads originally left of $k$bp from $b^i$ will be mapped at $[d2 - k - read\_size, d2 - k]$ instead of $[b^i - k - read\_size, b^i - k]$ and in the correct direction.
+    \item reads originally right of $k$bp from $b^i$ will be mapped at $[d1 + k, d1 + k + read\_size]$ instead of $[d^i + k, d^i + k + read\_size]$ and in the correct direction.
+    \item ARPs will thus have the order of their reads reversed, both reads will thus have opposite direction relative to normal read pairs.
+    \item coverage in $[d1, d2]$ is expected to be $1 + n$ times higher than in non duplicated areas.
+\end{itemize}
+
+In the case of ARPs, by using property 3, we know that $k < insert\_size$, we can thus conclude that all ARPs will be contained within $[d1, d1 + insert\_size + read\_size] \cup [d2, d2 + insert\_size + read\_size]$, coverage in that region will be $1 + n$ times higher than in non duplicated areas.
+
+By using property 3, we can conclude that given a set of ARPs supporting a tandem duplication, d1 will be contained within $insert\_size$ of the leftmost read, and d2 will be contained within $insert\_size$ of the rightmost read.
+
+We have thus constructed two intervals containing all the ARPs and RC information, these two intervals' sizes are only dependent on the insert size and read size, not the size of the duplicated area northe number of duplicated. 
+
+Note: This only works for duplicates larger than $insert\_size + read\_size$.
 
 \subsection{Conclusion}
 
-\paragraph{Theorem 1} Putting all the lemmas together we can conclude that given a set of structural variants, there are two windows of size \verb|2 * (insert_size + read_size)| each, centered on the two breakpoints in the reference genome that contains most of the ARPs that will support it.
+We have shown that, given a variant and its breakpoints, we can construct two windows of size $2 \times (insert\_size + read_size)$ each, centered on the two boundaries in the reference genome, that contains all the ARPs that support it.\\
 
-\paragraph{Theorem 2} Given a type of variant and a set of supporting ARPs, we can construct two windows of size \verb|2 * (insert_size + read_size)| that will contain the breakpoints in the reference genome.
+We have also shown that given a type of variant and ARPs supporting it, we can locate two intervals containing the boundaries, and from there two windows containing all the ARPs that would support that variant.
 
-\paragraph{Note} For tandem CNVs (and deletions) windows of size \verb|insert_size + read_size| would have sufficed to contain all the ARPs, however they would not have contained reads outside of the duplicated area (inside the deleted area), which would make us lose the RC information.
-Taking larger windows also allows us to have a single window size for all our variants, and thus using the same model for all the variants.
+The size of these windows are only dependent on the $insert\_size$ and $read\_size$, not on the size of the structural rearrangements.
 
-\paragraph{Note} All the window sizes given here assumed that the reads and inserts were of the same size, when we know that they are variable, adding a few standards deviations will allow us to catch the read pairs with higher insert size or read size. \cite{pham_efficient_2018}
+It is noteworthy that both $insert\_size$ and $read\_size$ will be extremely close between individuals provided they are sequenced using the same protocol. Our method will thus be able to predict variants on all future individuals sequenced using the same protocol. TODO CITATION.
+
+By taking the largest intervals of the three sub sections above, we can have a single model that will deal with all variants (except for translocations and interspersed duplications).
+
+\subsection{Future works}
+
+In this work we presented an algorithm for scoring the likelihood that a region contains a structural variant, by extracting a intervals independent on the size of the variants and using pattern matching models from the deep learning community.\\
+However this algorithm is not sufficient for finding variants from raw reads, we plan on integrating this algorithm in a full variant discovery pipeline that would emit the candidates variants as well as refining the location of the breakpoints.This full pipeline will be released with an open source license in the months following the publication of this paper.
+
+We chose not to deal with translocations and interspersed duplications in this work is because they would require to consider twice as much intervals and we have not found an elegant way to use the same model for them. However we could very well have a model for [deletion, tandem duplication, inversion] and a model for [translocation, interspersed duplication].
 
 \section{Dealing with real data}
 
@@ -250,7 +267,6 @@ We are aware of two reasons that could cause such a skew:
 Picard tells us that a width of 165 centered on the median, 386bp, will catch 95\% of the reads,
 which will be considered a sufficient approximation. In consequence when building our window we will
 consider an insert size of 467bp.
-
 
 \section*{References}
 
