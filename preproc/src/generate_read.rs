@@ -5,18 +5,28 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::process::Command;
 
+use glob::glob;
+
 use vcf_record::{InfoField, VCFRecord};
-use consts::{NA12878_BAM_PATH, REFERENCE_FA};
+use consts::{REFERENCE_FA};
 
 extern crate serde;
 extern crate serde_json;
 
 // TODO(gamazeps) do not hardcode the naming of the files for the samples
-pub fn generate_reads_for_na12878(record: VCFRecord) {
-    assert_eq!(
-        record.get_info("SAMPLE".to_owned()),
-        Some(InfoField::SAMPLE("NA12878".to_owned()))
-    );
+pub fn generate_reads(record: VCFRecord) {
+    let mut fnames : Vec<_> = glob("../data/alignment/*.bam")
+        .expect("Failed to read glob pattern")
+        .collect();
+    if fnames.len() == 0 {
+        return ();
+    }
+    if fnames.len() > 1 {
+        println!("There are two files, {:?}", fnames);
+        return ();
+    }
+
+    let fname = fnames.pop().unwrap().unwrap();
 
     let median_insert_size = 400;
     let median_read_size = 100;
@@ -32,7 +42,7 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
         // TODO(gamazeps): this is a horrible interraction with the borrowchecker.
         let mut c: Command = Command::new("samtools");
         c.arg("view")
-         .arg(NA12878_BAM_PATH)
+         .arg(format!("{}", fname.display()))
          .arg("-M")
          .arg(format!("{}:{}-{}",
                       record.chromosome(), pos - window, pos + window))
@@ -41,10 +51,7 @@ pub fn generate_reads_for_na12878(record: VCFRecord) {
 
         let output = c.output().expect("Failed to execute samtools view");
 
-        let sample = match record.get_info("SAMPLE".to_owned()) {
-            Some(InfoField::SAMPLE(e)) => e,
-            _ => panic!("SAMPLE field should contain a sample")
-        };
+        let sample = record.sample();
         let sv_type = match record.get_info("SVTYPE".to_owned()) {
             Some(InfoField::SVTYPE(e)) => e,
             _ => panic!("SVTYPE field should contain a type")

@@ -65,11 +65,18 @@ impl VCFRecord {
     pub fn id(&self) -> String {
         self.id.clone()
     }
+
+    pub fn sample(&self) -> String {
+        match self.get_info("SAMPLE".to_owned()) {
+            Some(InfoField::SAMPLE(s)) => s.clone(),
+            _ => panic!("The following record does not have a SAMPLE field \n {:?}", self),
+        }
+    }
 }
 
 /// Fields here follow the ones from the
 /// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub enum VariantType {
     /// Copy number variable region.
     CNV,
@@ -113,7 +120,7 @@ fn parse_alt(alt: &str) -> Vec<VariantType> {
 
 /// Fields here follow the ones from the
 /// [released dbvar file](ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV/vcf/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf.gz)
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub enum InfoField {
     /// ID is a dbVar accession.
     DBVARID,
