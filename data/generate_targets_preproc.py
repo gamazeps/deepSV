@@ -2956,11 +2956,18 @@ def generate_targets(n):
     cnt = 0
     for i in range(0, 10):
         targets = list()
+        commands = list("mkdir -p /mnt/disk1/felix/raw\n")
         for j in range(0, n):
             targets.append(folders[cnt] + "\n")
+            commands.append("cp -R ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/"
+                    + folders[cnt] + "/alignment /mnt/disk1/felix/raw/" + folders[cnt] + "\n"
+                    )
             cnt+=1
         f = open("targets_node" + str(node + i), "w")
         for c in targets:
+            f.write(c)
+        f = open("copy_node" + str(node + i), "w")
+        for c in commands:
             f.write(c)
 
 if __name__ == "__main__":
