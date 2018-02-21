@@ -15,7 +15,7 @@ extern crate serde_json;
 
 // TODO(gamazeps) do not hardcode the naming of the files for the samples
 pub fn generate_reads(record: VCFRecord) {
-    let mut fnames : Vec<_> = glob("../data/alignment/*.bam")
+    let mut fnames : Vec<_> = glob(&format!("/data/fraimund/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/{}/alignment/*.bam", record.sample()))
         .expect("Failed to read glob pattern")
         .collect();
     if fnames.len() == 0 {
@@ -26,6 +26,7 @@ pub fn generate_reads(record: VCFRecord) {
         return ();
     }
 
+    println!("{}", record.sample());
     let fname = fnames.pop().unwrap().unwrap();
 
     let median_insert_size = 400;

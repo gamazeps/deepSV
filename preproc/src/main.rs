@@ -23,6 +23,7 @@ use consts::FULL_1000GP_VCF_PATH;
 use vcf_record::{parse_vcf_file};
 use generate_read::{generate_reads};
 
+use std::time::{Duration, Instant};
 
 fn whitelisted_samples() -> HashSet<String> {
     let args: Vec<String> = env::args().collect();
@@ -61,22 +62,22 @@ fn main() {
 
     let mut thread_ids = Vec::new();
 
-    for i in 0..30 {
+    let beg = Instant::now();
+    for i in 0..10 {
         let recv = receiver.clone();
         let id = thread::spawn(move || {
-            let mut cnt = 0;
             loop {
-                let record = recv.lock().unwrap().recv();
+                let record = recv.lock().unwrap().try_recv();
                 match record {
-                    Ok(r) => generate_reads(r),
+                    Ok(r) => {
+                        println!("start {}", i);
+                        generate_reads(r);
+                        println!("end {}", i);
+                    }
                     Err(err) => {
                         println!("{:?}", err);
                         break;
                     }
-                }
-                cnt+=1;
-                if (cnt % 100) == 0 {
-                    println!("Thread {} processed {} reads", i, cnt);
                 }
             }
         });
@@ -86,4 +87,6 @@ fn main() {
     for id in thread_ids {
         id.join().expect("should not have failed");
     }
+    let end = Instant::now();
+    println!("{:?}", end.duration_since(beg));
 }
