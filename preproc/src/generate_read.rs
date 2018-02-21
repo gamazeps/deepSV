@@ -15,7 +15,7 @@ extern crate serde_json;
 
 // TODO(gamazeps) do not hardcode the naming of the files for the samples
 pub fn generate_reads(record: VCFRecord) {
-    let mut fnames : Vec<_> = glob(&format!("/data/fraimund/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/{}/alignment/*.bam", record.sample()))
+    let mut fnames : Vec<_> = glob(&format!("../data/reads/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/{}/alignment/*.bam", record.sample()))
         .expect("Failed to read glob pattern")
         .collect();
     if fnames.len() == 0 {
@@ -26,7 +26,6 @@ pub fn generate_reads(record: VCFRecord) {
         return ();
     }
 
-    println!("{}", record.sample());
     let fname = fnames.pop().unwrap().unwrap();
 
     let median_insert_size = 400;
@@ -63,9 +62,12 @@ pub fn generate_reads(record: VCFRecord) {
 
         // TODO(gamazeps): use https://github.com/rust-lang/rust/pull/42133/files for the output
         // This is currently shady as fuck...
-        let mut buffer = File::create(fname_sam.clone()).expect("Failed to create {}");
-        buffer.write(&output.stdout).expect("Failed to write the data to {}");
-        buffer.sync_all().expect("Failed to sync {} to disk");
+        let mut buffer = File::create(fname_sam.clone())
+            .expect(&format!("Failed to create {}", fname_sam.clone()));
+        buffer.write(&output.stdout)
+            .expect(&format!("Failed to write to {}", fname_sam.clone()));
+        buffer.sync_all()
+            .expect(&format!("Failed to sync {}", fname_sam.clone()));
 
         let mut ref_c: Command = Command::new("samtools");
         ref_c.arg("faidx")
@@ -77,9 +79,12 @@ pub fn generate_reads(record: VCFRecord) {
         let output = ref_c.output().expect("Failed to execute samtools faidx");
         let fname_fa = fname_ext(sample.clone(), record.id(), sv_type.clone(),
                                  record.pos().unwrap(), end, "fa");
-        let mut buffer = File::create(fname_fa.clone()).expect("Failed to create {}");
-        buffer.write(&output.stdout).expect("Failed to write the data to {}");
-        buffer.sync_all().expect("Failed to sync {} to disk");
+        let mut buffer = File::create(fname_fa.clone())
+            .expect(&format!("Failed to create {}", fname_fa.clone()));
+        buffer.write(&output.stdout)
+            .expect(&format!("Failed to write to {}", fname_fa.clone()));
+        buffer.sync_all()
+            .expect(&format!("Failed to sync {}", fname_fa.clone()));
 
         let fname_json = fname_ext(sample, record.id(), sv_type,
                                    record.pos().unwrap(), end, "json");
@@ -118,8 +123,11 @@ impl VarianrtMetadata {
 
     fn write_to_file(&self, fname: String) {
         let json = serde_json::to_string(self).expect("unable to serialize metadata");
-        let mut buffer = File::create(fname).expect("Failed to create metadata file");
-        buffer.write(json.as_bytes()).expect("Failed to write the metadata");
-        buffer.sync_all().expect("Failed to sync metadata to disk");
+        let mut buffer = File::create(fname.clone())
+            .expect(&format!("Failed to create {}", fname.clone()));
+        buffer.write(json.as_bytes())
+            .expect(&format!("Failed to write to {}", fname.clone()));
+        buffer.sync_all()
+            .expect(&format!("Failed to sync {}", fname.clone()));
     }
 }

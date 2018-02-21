@@ -15,6 +15,7 @@ use std::collections::HashSet;
 use std::sync::mpsc::channel;
 use std::thread;
 use std::fs::File;
+use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::sync::{Arc, Mutex};
@@ -23,7 +24,7 @@ use consts::FULL_1000GP_VCF_PATH;
 use vcf_record::{parse_vcf_file};
 use generate_read::{generate_reads};
 
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 fn whitelisted_samples() -> HashSet<String> {
     let args: Vec<String> = env::args().collect();
@@ -37,7 +38,9 @@ fn whitelisted_samples() -> HashSet<String> {
 
     let mut whitelist = HashSet::new();
     for line in file.lines().into_iter() {
-        whitelist.insert(line.expect("should be able to read a line"));
+        let l = line.expect("should be able to read a line");
+        let _ = fs::create_dir(format!("../data/supporting_reads/{}", l.clone()));
+        whitelist.insert(l);
     }
 
     whitelist
@@ -56,23 +59,35 @@ fn main() {
     let (sender, receiver) = channel();
     let receiver = Arc::new(Mutex::new(receiver));
 
+    let mut size = 0;
     for record in records {
         sender.send(record).unwrap();
+        size += 1;
     }
+    let size = size;
 
-    let mut thread_ids = Vec::new();
+    let n_threads = 32;
+    let mut thread_ids = Vec::with_capacity(n_threads);
 
     let beg = Instant::now();
-    for i in 0..10 {
+    for i in 0..n_threads {
         let recv = receiver.clone();
         let id = thread::spawn(move || {
+            let mut cnt = 0;
             loop {
                 let record = recv.lock().unwrap().try_recv();
                 match record {
                     Ok(r) => {
-                        println!("start {}", i);
+                        //println!("Start: thread {}, record {}, time {:?}",
+                        //         i, sample, Instant::now());
                         generate_reads(r);
-                        println!("end {}", i);
+                        //println!("End: thread {}, record {}, time {:?}",
+                        //         i, sample, Instant::now());
+                        cnt+=1;
+                        if (cnt % 20) == 0 {
+                            println!("thread {} processed {} variants of the total {}, it is {:.3}%",
+                                     i, cnt, size, ((n_threads * cnt) as f64) / (size as f64));
+                        }
                     }
                     Err(err) => {
                         println!("{:?}", err);
