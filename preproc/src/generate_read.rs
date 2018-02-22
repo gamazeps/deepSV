@@ -81,7 +81,7 @@ pub fn generate_reads(record: VCFRecord) {
                       record.chromosome(), end - window, end + window));
         let output = ref_c.output().expect("Failed to execute samtools faidx");
         let fname_fa = fname_ext(sample.clone(), record.id(), sv_type.clone(),
-                                 record.pos().unwrap() - rea, end, "fa");
+                                 record.pos().unwrap(), end, "fa");
         let mut buffer = File::create(fname_fa.clone())
             .expect(&format!("Failed to create {}", fname_fa.clone()));
         buffer.write(&output.stdout)

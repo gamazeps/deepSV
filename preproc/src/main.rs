@@ -85,8 +85,11 @@ fn main() {
                         //         i, sample, Instant::now());
                         cnt+=1;
                         if (cnt % 20) == 0 {
-                            println!("thread {} processed {} variants of the total {}, it is {:.3}%",
-                                     i, cnt, size, ((n_threads * cnt) as f64) / (size as f64));
+                            println!("thread {} processed {} variants of the total {},\
+                                     it is {:.3}% in {}s",
+                                     i, cnt, size,
+                                     100.0 * ((n_threads * cnt) as f64) / (size as f64),
+                                     Instant::now().duration_since(beg).as_secs());
                         }
                     }
                     Err(err) => {
