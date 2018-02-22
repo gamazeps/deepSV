@@ -2951,25 +2951,27 @@ folders = [
     "NA21144"
 ]
 
-def generate_targets(n):
+def generate_targets(nodes = 10):
     node = 10
     cnt = 0
-    for i in range(0, 10):
+    for i in range(0, nodes):
         targets = list()
-        commands = list("mkdir -p /mnt/disk1/felix/raw\n")
-        for j in range(0, n):
-            targets.append(folders[cnt] + "\n")
-            commands.append("cp -R ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/"
+        for j in range(i, len(folders), nodes):
+            targets.append(folders[j])
+
+        commands = list()
+        commands.append("set -x\n")
+        commands.append("mkdir -p /mnt/disk1/felix/raw\n")
+        for target in targets:
+            commands.append("cp -R reads/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/"
                     + folders[cnt] + "/alignment /mnt/disk1/felix/raw/" + folders[cnt] + "\n"
                     )
-            cnt+=1
         f = open("targets_node" + str(node + i), "w")
-        for c in targets:
-            f.write(c)
-        f = open("copy_node" + str(node + i), "w")
-        for c in commands:
-            f.write(c)
+        for target in targets:
+            f.write(target + "\n")
+        f = open("copy_node" + str(node + i) + ".sh", "w")
+        for command in commands:
+            f.write(command)
 
 if __name__ == "__main__":
-    n = int(input("How many samples ?"))
-    generate_targets(n)
+    generate_targets()
