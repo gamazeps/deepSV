@@ -39,7 +39,7 @@ fn whitelisted_samples() -> HashSet<String> {
     let mut whitelist = HashSet::new();
     for line in file.lines().into_iter() {
         let l = line.expect("should be able to read a line");
-        let _ = fs::create_dir(format!("../data/supporting_reads/{}", l.clone()));
+        let _ = fs::create_dir(format!("/mnt/disk1/felix/supporting_reads/{}", l.clone()));
         whitelist.insert(l);
     }
 

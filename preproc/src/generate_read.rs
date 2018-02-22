@@ -15,10 +15,11 @@ extern crate serde_json;
 
 // TODO(gamazeps) do not hardcode the naming of the files for the samples
 pub fn generate_reads(record: VCFRecord) {
-    let mut fnames : Vec<_> = glob(&format!("../data/reads/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/{}/alignment/*.bam", record.sample()))
+    let mut fnames : Vec<_> = glob(&format!("/mnt/disk1/felix/raw/{}/*.bam", record.sample()))
         .expect("Failed to read glob pattern")
         .collect();
     if fnames.len() == 0 {
+        println!("no files found in /mnt/disk1/felix/raw/{}/*.bam", record.sample());
         return ();
     }
     if fnames.len() > 1 {
@@ -49,7 +50,8 @@ pub fn generate_reads(record: VCFRecord) {
          .arg(format!("{}:{}-{}",
                       record.chromosome(), end - window, end + window));
 
-        let output = c.output().expect("Failed to execute samtools view");
+        let output = c.output()
+            .expect(&format!("Failed to execute samtools view on {}", fname.display()));
 
         let sample = record.sample();
         let sv_type = match record.get_info("SVTYPE".to_owned()) {
@@ -73,12 +75,13 @@ pub fn generate_reads(record: VCFRecord) {
         ref_c.arg("faidx")
          .arg(REFERENCE_FA)
          .arg(format!("{}:{}-{}",
-                      record.chromosome(), pos - window, pos + window))
+                      record.chromosome(), pos - window - median_read_size,
+                      pos + window + median_read_size))
          .arg(format!("{}:{}-{}",
                       record.chromosome(), end - window, end + window));
         let output = ref_c.output().expect("Failed to execute samtools faidx");
         let fname_fa = fname_ext(sample.clone(), record.id(), sv_type.clone(),
-                                 record.pos().unwrap(), end, "fa");
+                                 record.pos().unwrap() - rea, end, "fa");
         let mut buffer = File::create(fname_fa.clone())
             .expect(&format!("Failed to create {}", fname_fa.clone()));
         buffer.write(&output.stdout)
@@ -95,7 +98,7 @@ pub fn generate_reads(record: VCFRecord) {
 
 fn fname_ext(sample: String, id: String, sv_type: String, pos: u64, end: u64, ext: &str) -> String {
         format!(
-            "../data/supporting_reads/{}/{}.{}.{}-{}.{}",
+            "/mnt/disk1/felix/supporting_reads/{}/{}.{}.{}-{}.{}",
             sample,
             id,
             sv_type,
