@@ -2964,7 +2964,7 @@ def generate_targets(nodes = 10):
         commands.append("mkdir -p /mnt/disk1/felix/raw\n")
         for target in targets:
             commands.append("cp -R reads/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/"
-                    + folders[cnt] + "/alignment /mnt/disk1/felix/raw/" + folders[cnt] + "\n"
+                    + target + "/alignment /mnt/disk1/felix/raw/" + target + "\n"
                     )
         f = open("targets_node" + str(node + i), "w")
         for target in targets:
