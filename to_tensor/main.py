@@ -54,13 +54,11 @@ def get_pos(pos, variant_size, split_windows):
     return pos
 
 def draw_sam(fname):
-    f = open(fname, "r")
+    f = open(fname + ".sam", "r")
     content = [ugly_parse(record) for record in f]
 
     if len(content) is 0:
         return # we need to be careful of empty files
-
-    base_name = fname[:-len(".sam")]
 
     origin = content[0]["POS"]
     end    = content[-1]["POS"] + len(content[-1]["SEQ"])
@@ -69,12 +67,12 @@ def draw_sam(fname):
     for r in content:
         reads_id.add(r["QNAME"])
 
-    ref = read_fa(base_name + ".fa")
+    ref = read_fa(fname + ".fa")
     content = ref + content
 
     l = len(reads_id)
 
-    #print(origin, end, l, len(content), len(content) - l, base_name + ".png")
+    #print(origin, end, l, len(content), len(content) - l, fname + ".png")
 
     img  = Image.new("RGB", (image_w, l), (0, 0, 0))
     draw = ImageDraw.Draw(img, "RGB")
@@ -115,7 +113,7 @@ def draw_sam(fname):
 
 
 def serialize_sam(fname):
-    f = open(fname, "r")
+    f = open(fname + ".sam", "r")
     content = [ugly_parse(record) for record in f]
 
     if len(content) is 0:
@@ -148,5 +146,6 @@ def ugly_parse(sam):
 if __name__ == "__main__":
     names = find_sam_files()
     for fname in names:
+        fname = fname[:-len(".sam")]
         draw_sam(fname)
         serialize_sam(fname)
