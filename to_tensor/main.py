@@ -17,7 +17,7 @@ def read_sam(fname):
 
     for c in content:
         inf = ugly_parse(c)
-        print(inf["POS"], len(inf["SEQ"]))
+        #print(inf["POS"], len(inf["SEQ"]))
 
 def read_fa(fname):
     f = open(fname, "r")
@@ -30,7 +30,7 @@ def read_fa(fname):
                 res.append(curr)
             curr = {}
             parts = l[1:].strip().split(":")
-            print("ref:" + parts[1])
+            #print("ref:" + parts[1])
             regions = parts[1].split("-")
             curr["QNAME"] = "ref"
             curr["POS"] = int(regions[0]) # we don't care about chr nor end
@@ -60,6 +60,8 @@ def draw_sam(fname):
     if len(content) is 0:
         return # we need to be careful of empty files
 
+    base_name = fname[:-len(".sam")]
+
     origin = content[0]["POS"]
     end    = content[-1]["POS"] + len(content[-1]["SEQ"])
 
@@ -67,12 +69,12 @@ def draw_sam(fname):
     for r in content:
         reads_id.add(r["QNAME"])
 
-    ref = read_fa(fname + ".fa")
+    ref = read_fa(base_name + ".fa")
     content = ref + content
 
     l = len(reads_id)
 
-    print(origin, end, l, len(content), len(content) - l, fname + ".png")
+    #print(origin, end, l, len(content), len(content) - l, base_name + ".png")
 
     img  = Image.new("RGB", (image_w, l), (0, 0, 0))
     draw = ImageDraw.Draw(img, "RGB")
