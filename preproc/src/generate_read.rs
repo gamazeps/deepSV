@@ -78,7 +78,8 @@ pub fn generate_reads(record: VCFRecord) {
                       record.chromosome(), pos - window - median_read_size,
                       pos + window + median_read_size))
          .arg(format!("{}:{}-{}",
-                      record.chromosome(), end - window, end + window));
+                      record.chromosome(), end - window - median_read_size,
+                      end + window + median_read_size));
         let output = ref_c.output().expect("Failed to execute samtools faidx");
         let fname_fa = fname_ext(sample.clone(), record.id(), sv_type.clone(),
                                  record.pos().unwrap(), end, "fa");
