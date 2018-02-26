@@ -228,12 +228,13 @@ pub fn parse_record(input: String) -> Option<VCFRecord> {
 }
 
 pub fn parse_vcf_file(input: String) -> Vec<VCFRecord> {
-    let f = File::open(input).expect("Unable to open the given VCF file");
+    let f = File::open(input.clone()).expect(&format!("Unable to open the given VCF file: {}", input));
     let file = BufReader::new(&f);
     file.lines().into_iter().filter_map(|line| parse_record(line.unwrap())).collect()
 }
 
 // TODO(gamazeps): make a typed string for Samples
+#[allow(dead_code)]
 pub fn group_by_sample(records: Vec<VCFRecord>) -> HashMap<String, Vec<VCFRecord>> {
     records.into_iter().fold(HashMap::new(), |mut m, v| {
         let sample = match v.info.get("SAMPLE") {

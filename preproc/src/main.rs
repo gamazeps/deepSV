@@ -8,7 +8,7 @@ extern crate glob;
 mod picard_stats;
 mod vcf_record;
 mod generate_read;
-mod consts;
+mod config;
 
 use std::env;
 use std::collections::HashSet;
@@ -20,17 +20,28 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::sync::{Arc, Mutex};
 
-use consts::FULL_1000GP_VCF_PATH;
 use vcf_record::{parse_vcf_file};
 use generate_read::{generate_reads};
+use config::Config;
 
 use std::time::{Instant};
 
-fn whitelisted_samples() -> HashSet<String> {
+const USE_STR : &'static str= "Use of preproc: cargo run CONFIG TARGETS";
+
+fn get_config() -> Config {
     let args: Vec<String> = env::args().collect();
     let fname = match args.len() {
-        2 => args[1].clone(),
-        _ => panic!("Please provide one argument with a path to the whitelisted samples"),
+        3 => args[1].clone(),
+        _ => panic!(USE_STR),
+    };
+    Config::from_name(fname)
+}
+
+fn whitelisted_samples(destination: String) -> HashSet<String> {
+    let args: Vec<String> = env::args().collect();
+    let fname = match args.len() {
+        3 => args[2].clone(),
+        _ => panic!(USE_STR),
     };
 
     let f = File::open(fname).expect("Unable to open the given whitelist file");
@@ -39,7 +50,7 @@ fn whitelisted_samples() -> HashSet<String> {
     let mut whitelist = HashSet::new();
     for line in file.lines().into_iter() {
         let l = line.expect("should be able to read a line");
-        let _ = fs::create_dir(format!("/mnt/disk1/felix/supporting_reads/{}", l.clone()));
+        let _ = fs::create_dir(format!("{}/{}", destination, l.clone()));
         whitelist.insert(l);
     }
 
@@ -47,9 +58,12 @@ fn whitelisted_samples() -> HashSet<String> {
 }
 
 fn main() {
-    let records = parse_vcf_file(FULL_1000GP_VCF_PATH.to_owned());
-    let whitelist = whitelisted_samples();
+    let config = get_config();
 
+    let records = parse_vcf_file(config.vcf_path.clone());
+    let whitelist = whitelisted_samples(config.destination_dir.clone());
+
+    println!("Opening the VCF file");
     let records = records
         .into_iter()
         .filter(move |record| record.is_simple()
@@ -59,6 +73,7 @@ fn main() {
     let (sender, receiver) = channel();
     let receiver = Arc::new(Mutex::new(receiver));
 
+    println!("Sending reads to the channels");
     let mut size = 0;
     for record in records {
         sender.send(record).unwrap();
@@ -69,20 +84,18 @@ fn main() {
     let n_threads = 32;
     let mut thread_ids = Vec::with_capacity(n_threads);
 
+    println!("Launching the threads");
     let beg = Instant::now();
-    for i in 0..n_threads {
+    for i in 0..config.n_threads {
         let recv = receiver.clone();
+        let conf = config.clone();
         let id = thread::spawn(move || {
             let mut cnt = 0;
             loop {
                 let record = recv.lock().unwrap().try_recv();
                 match record {
                     Ok(r) => {
-                        //println!("Start: thread {}, record {}, time {:?}",
-                        //         i, sample, Instant::now());
-                        generate_reads(r);
-                        //println!("End: thread {}, record {}, time {:?}",
-                        //         i, sample, Instant::now());
+                        generate_reads(r, &conf);
                         cnt+=1;
                         if (cnt % 20) == 0 {
                             println!("thread {} processed {} variants of the total {},\

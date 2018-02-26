@@ -1,6 +1,9 @@
 /// Module for calling the nice function that will generat the reads using samtools
 /// in a nice file.
 
+extern crate serde;
+extern crate serde_json;
+
 use std::io::prelude::*;
 use std::fs::File;
 use std::process::Command;
@@ -8,18 +11,15 @@ use std::process::Command;
 use glob::glob;
 
 use vcf_record::{InfoField, VCFRecord};
-use consts::{REFERENCE_FA};
-
-extern crate serde;
-extern crate serde_json;
+use config::Config;
 
 // TODO(gamazeps) do not hardcode the naming of the files for the samples
-pub fn generate_reads(record: VCFRecord) {
-    let mut fnames : Vec<_> = glob(&format!("/mnt/disk1/felix/raw/{}/*.bam", record.sample()))
+pub fn generate_reads(record: VCFRecord, config: &Config) {
+    let mut fnames : Vec<_> = glob(&format!("{}/{}/*.bam", config.data_dir.clone(), record.sample()))
         .expect("Failed to read glob pattern")
         .collect();
     if fnames.len() == 0 {
-        println!("no files found in /mnt/disk1/felix/raw/{}/*.bam", record.sample());
+        println!("no files found in {}/{}/*.bam", config.data_dir.clone(), record.sample());
         return ();
     }
     if fnames.len() > 1 {
@@ -40,7 +40,6 @@ pub fn generate_reads(record: VCFRecord) {
         };
         let pos = record.pos().unwrap();
 
-        // TODO(gamazeps): this is a horrible interraction with the borrowchecker.
         let mut c: Command = Command::new("samtools");
         c.arg("view")
          .arg(format!("{}", fname.display()))
@@ -59,11 +58,8 @@ pub fn generate_reads(record: VCFRecord) {
             _ => panic!("SVTYPE field should contain a type")
         };
 
-        let fname_sam = fname_ext(sample.clone(), record.id(), sv_type.clone(),
+        let fname_sam = fname_ext(&config, sample.clone(), record.id(), sv_type.clone(),
                                   record.pos().unwrap(), end, "sam");
-
-        // TODO(gamazeps): use https://github.com/rust-lang/rust/pull/42133/files for the output
-        // This is currently shady as fuck...
         let mut buffer = File::create(fname_sam.clone())
             .expect(&format!("Failed to create {}", fname_sam.clone()));
         buffer.write(&output.stdout)
@@ -73,7 +69,7 @@ pub fn generate_reads(record: VCFRecord) {
 
         let mut ref_c: Command = Command::new("samtools");
         ref_c.arg("faidx")
-         .arg(REFERENCE_FA)
+         .arg(config.refence_path.clone())
          .arg(format!("{}:{}-{}",
                       record.chromosome(), pos - window - median_read_size,
                       pos + window + median_read_size))
@@ -81,7 +77,7 @@ pub fn generate_reads(record: VCFRecord) {
                       record.chromosome(), end - window - median_read_size,
                       end + window + median_read_size));
         let output = ref_c.output().expect("Failed to execute samtools faidx");
-        let fname_fa = fname_ext(sample.clone(), record.id(), sv_type.clone(),
+        let fname_fa = fname_ext(&config, sample.clone(), record.id(), sv_type.clone(),
                                  record.pos().unwrap(), end, "fa");
         let mut buffer = File::create(fname_fa.clone())
             .expect(&format!("Failed to create {}", fname_fa.clone()));
@@ -90,16 +86,18 @@ pub fn generate_reads(record: VCFRecord) {
         buffer.sync_all()
             .expect(&format!("Failed to sync {}", fname_fa.clone()));
 
-        let fname_json = fname_ext(sample, record.id(), sv_type,
+        let fname_json = fname_ext(&config, sample, record.id(), sv_type,
                                    record.pos().unwrap(), end, "json");
         let metadata = VarianrtMetadata::new(record, fname_fa, fname_sam);
         metadata.write_to_file(fname_json);
     }
 }
 
-fn fname_ext(sample: String, id: String, sv_type: String, pos: u64, end: u64, ext: &str) -> String {
+fn fname_ext(conf: &Config, sample: String, id: String, sv_type: String,
+             pos: u64, end: u64, ext: &str) -> String {
         format!(
-            "/mnt/disk1/felix/supporting_reads/{}/{}.{}.{}-{}.{}",
+            "{}/{}/{}.{}.{}-{}.{}",
+            conf.destination_dir.clone(),
             sample,
             id,
             sv_type,
