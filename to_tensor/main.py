@@ -8,75 +8,10 @@ median_read_size = 101
 median_insert_size = 500
 breakpoint_window = 2 * (median_read_size + median_insert_size)
 split_marker = 10
-image_w = 2 * breakpoint_window + split_marker
-
+full_window = 2 * breakpoint_window + split_marker
 
 def find_sam_files():
     return glob.glob("../data/supporting_reads/NA12878/*sam")
-
-
-def get_pos(pos, variant_size, split_windows):
-    """
-    Helper fucntion for finding the location of a base in the tensor
-    """
-    # We deal with case where we need to split the reads
-    if split_windows:
-        if pos > (variant_size - breakpoint_window):
-            pos = breakpoint_window + split_marker + pos - (variant_size - breakpoint_window)
-        else:
-            pass
-    else:
-        pos += (image_w - variant_size) / 2
-    return pos
-
-
-def draw_sam(fname):
-    f = open(fname + ".sam", "r")
-    content = [sam_parser(record) for record in f]
-
-    if len(content) is 0:
-        return # we need to be careful of empty files
-
-    origin = content[0]["POS"]
-    end    = content[-1]["POS"] + len(content[-1]["SEQ"])
-
-    reads_id = set()
-    for r in content:
-        reads_id.add(r["QNAME"])
-
-    ref = read_fa(fname + ".fa")
-    content = ref + content
-
-    l = len(reads_id)
-
-    #print(origin, end, l, len(content), len(content) - l, fname + ".png")
-
-
-    row = 0
-    index = dict()
-    variant_size = end - origin
-    split_windows = variant_size > image_w
-    for read in content:
-        # Needed for pairing read pairs together
-        j = row
-        if read["QNAME"] in index:
-            j = index[read["QNAME"]]
-        else:
-            index[read["QNAME"]] = row
-            row += 1
-
-        pos = get_pos(read["POS"] - origin, variant_size, split_windows)
-
-        for i, base in enumerate(read["SEQ"]):
-            draw.point((pos + i, j), values[base])
-
-    # We draw the split marker
-    if split_windows:
-        for i in range(breakpoint_window, breakpoint_window + split_marker):
-            for j in range(0, l):
-                draw.point((i, j), (255, 0, 0))
-
-    img.save(fname + ".png")
 
 
 class RefRead:
@@ -213,26 +148,43 @@ class DeepSVTensor:
     def __init__(self, pairs_capacity, metadata):
         self.metadata = metadata
         self.begin = self.metadata["pos"] - (breakpoint_window / 2)
-        #self.end = self.metadata["info"]["END"]["END"]
-        self.end = self.begin + (breakpoint_window / 2)
+        self.end = self.metadata["info"]["END"]["END"]
         self.size = self.end - self.begin
         self.pairs_capacity = pairs_capacity
-        self.tensor = np.full((pairs_capacity, self.size), self.dummy)
+        self.tensor = np.full((pairs_capacity, full_window), self.dummy)
         self.n_pairs = 0
+        if self.size > breakpoint_window:
+            pass
 
     def insert_read_pair(self, rp):
         if self.n_pairs >= self.pairs_capacity:
             print("Too many pairs in variant: " + self.metadata["id"] )
             self.n_pairs += 1
             return
-        self.tensor[self.n_pairs, :] = rp.extract_range(self.begin, self.end, dummy=self.dummy)
+        if self.size > breakpoint_window:
+            self.tensor[self.n_pairs, :breakpoint_window] = rp.extract_range(
+                    self.begin - (breakpoint_window / 2),
+                    self.begin + (breakpoint_window / 2),
+                    dummy=self.dummy)
+            self.tensor[self.n_pairs, breakpoint_window + split_marker:] = rp.extract_range(
+                    self.end - (breakpoint_window / 2),
+                    self.end + (breakpoint_window / 2),
+                    dummy=self.dummy)
+        else:
+            l_center_pad = (full_window - (self.size + breakpoint_window) + 1) / 2
+            r_center_pad = (full_window - (self.size + breakpoint_window)) / 2
+            self.tensor[self.n_pairs, l_center_pad: -r_center_pad] = rp.extract_range(
+                    self.begin - (breakpoint_window / 2),
+                    self.end + (breakpoint_window / 2),
+                    dummy=self.dummy)
+
         self.n_pairs += 1
 
     def insert_ref(self, ref):
         pass
 
     def dummy_image(self, fname):
-        img  = Image.new("RGB", (self.size, self.pairs_capacity), (0, 0, 0))
+        img  = Image.new("RGB", (full_window, self.pairs_capacity), (0, 0, 0))
         draw = ImageDraw.Draw(img, "RGB")
 
         values = {
@@ -245,8 +197,7 @@ class DeepSVTensor:
                  }
 
         for i in range(0, self.pairs_capacity):
-            for j in range(0, self.size):
-                #if (self.tensor[i][j] != " "):
+            for j in range(0, full_window):
                 draw.point((j, i), values[self.tensor[i, j]])
 
         print("Saved tensor to {}".format(fname))
@@ -264,7 +215,8 @@ def build_tensor(basename):
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
 
-    tensor.dummy_image(basename + ".png")
+    if len(read_pairs) > 0:
+        tensor.dummy_image(basename + ".png")
     return tensor
 
 
@@ -274,7 +226,6 @@ def build_read_pairs(fname):
         for record in f:
             read = SamRead(record)
             if not (read.flag & int("0xc0", base=16)):
-                print("single read")
                 continue
             if read.qname not in records:
                 records[read.qname] = ReadPair(read.qname)
@@ -294,6 +245,6 @@ def get_metadata(fname):
 
 if __name__ == "__main__":
     names = find_sam_files()
-    for fname in names[:3]:
+    for i, fname in enumerate(names[:]):
         fname = fname[:-len(".sam")]
         build_tensor(fname)
