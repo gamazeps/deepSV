@@ -13,7 +13,6 @@ use glob::glob;
 use vcf_record::{InfoField, VCFRecord};
 use config::Config;
 
-// TODO(gamazeps) do not hardcode the naming of the files for the samples
 pub fn generate_reads(record: VCFRecord, config: &Config) {
     let mut fnames : Vec<_> = glob(&format!("{}/{}/*.bam", config.data_dir.clone(), record.sample()))
         .expect("Failed to read glob pattern")
