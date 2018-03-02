@@ -1,17 +1,19 @@
 import glob
+from multiprocessing import Pool
 from PIL import Image, ImageDraw
 import cPickle
 import json
 import numpy as np
 
 median_read_size = 101
-median_insert_size = 500
+median_insert_size = 400
 breakpoint_window = 2 * (median_read_size + median_insert_size)
 split_marker = 10
 full_window = 2 * breakpoint_window + split_marker
 
-def find_sam_files():
-    return glob.glob("../data/supporting_reads/NA12878/*sam")
+def find_variant_files():
+    fnames = glob.glob("../data/supporting_reads/NA12878/*sam")
+    return [fname[:-4] for fname in fnames]
 
 
 class RefRead:
@@ -153,15 +155,14 @@ class DeepSVTensor:
         self.pairs_capacity = pairs_capacity
         self.tensor = np.full((pairs_capacity, full_window), self.dummy)
         self.n_pairs = 0
-        if self.size > breakpoint_window:
-            pass
+        self.is_split = self.size > breakpoint_window
 
     def insert_read_pair(self, rp):
         if self.n_pairs >= self.pairs_capacity:
             print("Too many pairs in variant: " + self.metadata["id"] )
             self.n_pairs += 1
             return
-        if self.size > breakpoint_window:
+        if self.is_split:
             self.tensor[self.n_pairs, :breakpoint_window] = rp.extract_range(
                     self.begin - (breakpoint_window / 2),
                     self.begin + (breakpoint_window / 2),
@@ -183,10 +184,12 @@ class DeepSVTensor:
     def insert_ref(self, ref):
         pass
 
-    def dummy_image(self, fname):
+    def dummy_image(self, fname, draw_bp=False):
+        if self.pairs_capacity == 0:
+            return
+
         img  = Image.new("RGB", (full_window, self.pairs_capacity), (0, 0, 0))
         draw = ImageDraw.Draw(img, "RGB")
-
         values = {
                     "A": (54,  117, 177),
                     "C": (241, 133, 39),
@@ -200,7 +203,17 @@ class DeepSVTensor:
             for j in range(0, full_window):
                 draw.point((j, i), values[self.tensor[i, j]])
 
-        print("Saved tensor to {}".format(fname))
+        if self.is_split:
+            for i in range(0, self.pairs_capacity):
+                for j in range(breakpoint_window, breakpoint_window + split_marker):
+                    draw.point((j, i), (255, 0, 0))
+            #print("Saved tensor to {}".format(fname))
+
+        if draw_bp:
+            for i in range(0, self.pairs_capacity):
+                draw.point((breakpoint_window / 2, i), (255, 255, 255))
+                draw.point((full_window - (breakpoint_window / 2), i), (255, 255, 255))
+
         img.save(fname)
 
 
@@ -215,8 +228,6 @@ def build_tensor(basename):
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
 
-    if len(read_pairs) > 0:
-        tensor.dummy_image(basename + ".png")
     return tensor
 
 
@@ -242,9 +253,16 @@ def get_metadata(fname):
         metadata = json.load(f)
     return metadata
 
+def wrapper(fname):
+    tensor = build_tensor(fname)
+    tensor.dummy_image(fname + ".png", draw_bp=True)
 
 if __name__ == "__main__":
-    names = find_sam_files()
-    for i, fname in enumerate(names[:]):
-        fname = fname[:-len(".sam")]
-        build_tensor(fname)
+    names = find_variant_files()
+    for fname in names[:]:
+        tensor = build_tensor(fname)
+        tensor.dummy_image(fname + ".png", draw_bp=True)
+    """
+    p = Pool(2)
+    p.map(wrapper, names)
+    """
