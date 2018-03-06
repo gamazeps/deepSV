@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw
 import cPickle
 import json
 import numpy as np
+import sys
 
 median_read_size = 101
 median_insert_size = 400
@@ -218,7 +219,7 @@ class DeepSVTensor:
 
 
 def build_tensor(basename):
-    metadata = get_metadata(basename + ".json")
+    metadata = get_json(basename + ".json")
     record = metadata["record"]
     read_pairs = build_read_pairs(basename + ".sam")
     ref = RefSeq(basename + ".fa")
@@ -245,7 +246,7 @@ def build_read_pairs(fname):
                   key=lambda rp: rp.leftmost())
 
 
-def get_metadata(fname):
+def get_json(fname):
     """
     Gets the metadata from the json file
     """
@@ -253,16 +254,18 @@ def get_metadata(fname):
         metadata = json.load(f)
     return metadata
 
-def wrapper(fname):
+
+def process_variant(fname, index=None, verbose=False):
     tensor = build_tensor(fname)
     tensor.dummy_image(fname + ".png", draw_bp=True)
+    if verbose and index:
+        print(index, fname + ".png")
 
 if __name__ == "__main__":
     names = find_variant_files()
-    for fname in names[:]:
-        tensor = build_tensor(fname)
-        tensor.dummy_image(fname + ".png", draw_bp=True)
+    for i, fname in enumerate(names[:]):
+        process_variant(fname, index=i, verbose=True)
     """
     p = Pool(2)
-    p.map(wrapper, names)
+    p.map(process_variant, names)
     """
