@@ -111,7 +111,7 @@ class ReadPair:
     def paired(self):
         return not (self.first == None or self.second == None)
 
-    def extract_range(self, begin, end, dummy = ' '):
+    def extract_range(self, begin, end, dummy=' '):
         assert(begin < end)
         res = np.full((1, (end - begin)), dummy)
         for read in [self.first, self.second]:
@@ -157,6 +157,7 @@ class DeepSVTensor:
         self.tensor = np.full((pairs_capacity, full_window), self.dummy)
         self.n_pairs = 0
         self.is_split = self.size > breakpoint_window
+        self.label = self.metadata["alt"][0]
 
     def insert_read_pair(self, rp):
         if self.n_pairs >= self.pairs_capacity:
