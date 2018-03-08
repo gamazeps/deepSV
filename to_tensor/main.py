@@ -277,6 +277,9 @@ class DeepSVTensor:
         img.save(fname)
 
     def tensor_voxel(self):
+        """
+        Slow as hell and requires python3, kept for history
+        """
         voxels = self.tensor
         colors = np.empty(voxels.shape, dtype=object)
 
