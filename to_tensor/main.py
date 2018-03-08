@@ -276,29 +276,6 @@ class DeepSVTensor:
 
         img.save(fname)
 
-    def tensor_voxel(self):
-        """
-        Slow as hell and requires python3, kept for history
-        """
-        voxels = self.tensor
-        colors = np.empty(voxels.shape, dtype=object)
-
-        print "bite"
-        for i in range(0, self.pairs_capacity):
-            for j in range(0, full_window):
-                if voxels[i][j][0] == 1:
-                    colors[i, j, 0] = "orange"
-                elif voxels[i][j][1] == 1:
-                    colors[i, j, 1] = "green"
-                elif voxels[i][j][2] == 1:
-                    colors[i, j, 2] = "blue"
-                elif voxels[i][j][3] == 1:
-                    colors[i, j, 3] = "yellow"
-
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        ax.voxels(voxels, facecolors=colors, edgecolor='k')
-        plt.show()
 
 def build_tensor(basename):
     metadata = get_json(basename + ".json")
