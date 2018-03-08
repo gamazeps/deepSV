@@ -82,6 +82,22 @@ class SamRead:
         return [c for c in self.seq]
 
 
+class TensorEncoder:
+    def __init__(self, n_channels=1, sam_channels=4, ref_channels=0):
+        #TODO(gamazeps): decent asserts for the channels
+        self.n_channels = n_channels
+        self.sam_channels = sam_channels
+        self.ref_channels = ref_channels
+
+    def encode_sam(self, read):
+        (x,) = read.shape
+        return read.reshape((-1, 1))
+
+    def decode_sam(self, encoding):
+        (x, _) = encoding.shape
+        return encoding.reshape(x)
+
+
 class ReadPair:
     def __init__(self, name):
         self.name = name
@@ -113,7 +129,7 @@ class ReadPair:
 
     def extract_range(self, begin, end, dummy=' '):
         assert(begin < end)
-        res = np.full((1, (end - begin)), dummy)
+        res = np.full((end - begin), dummy)
         for read in [self.first, self.second]:
             if read:
                 if read.end < begin:
@@ -121,24 +137,24 @@ class ReadPair:
                 elif read.pos > end:
                     continue
                 elif read.end == begin:
-                    res[0, 0] = read.align()[-1]
+                    res[0] = read.align()[-1]
                 elif read.pos == end:
-                    res[0, -1] = read.align()[0]
+                    res[-1] = read.align()[0]
                 elif read.pos >= begin and read.end <= end:
-                    res[0, read.pos - begin: read.end - begin] = read.align()
-                    assert(np.array_equal(res[0, read.pos - begin: read.end - begin],
+                    res[read.pos - begin: read.end - begin] = read.align()
+                    assert(np.array_equal(res[read.pos - begin: read.end - begin],
                                           read.align()))
                 elif read.pos < begin and read.end < end:
-                    res[0, : read.end - begin] = read.align()[-(read.end - begin):]
-                    assert(np.array_equal(res[0, : read.end - begin],
+                    res[: read.end - begin] = read.align()[-(read.end - begin):]
+                    assert(np.array_equal(res[:read.end - begin],
                         read.align()[-(read.end - begin):]))
                 elif read.pos > begin and read.end > end:
-                    res[0, read.pos - begin:] = read.align()[:-(read.end - end)]
-                    assert(np.array_equal(res[0, read.pos - begin:],
+                    res[read.pos - begin:] = read.align()[:-(read.end - end)]
+                    assert(np.array_equal(res[read.pos - begin:],
                                           read.align()[:-(read.end - end)]))
                 elif read.pos < begin and read.end > end:
-                    res[0,:] = read.align()[begin - read.pos: -(read.end - end)]
-                    assert(np.array_equal(res[0,:],
+                    res[:] = read.align()[begin - read.pos: -(read.end - end)]
+                    assert(np.array_equal(res[:],
                                           read.align()[begin - read.pos: -(read.end - end)]))
                 else:
                     assert False, "unreachable"
@@ -148,13 +164,14 @@ class ReadPair:
 class DeepSVTensor:
     dummy = ' '
 
-    def __init__(self, pairs_capacity, metadata):
+    def __init__(self, encoder, metadata, pairs_capacity):
+        self.encoder = encoder
         self.metadata = metadata
         self.begin = self.metadata["pos"] - (breakpoint_window / 2)
         self.end = self.metadata["info"]["END"]["END"]
         self.size = self.end - self.begin
         self.pairs_capacity = pairs_capacity
-        self.tensor = np.full((pairs_capacity, full_window), self.dummy)
+        self.tensor = np.full((pairs_capacity, full_window, 1), self.dummy)
         self.n_pairs = 0
         self.is_split = self.size > breakpoint_window
         self.label = self.metadata["alt"][0]
@@ -165,21 +182,30 @@ class DeepSVTensor:
             self.n_pairs += 1
             return
         if self.is_split:
-            self.tensor[self.n_pairs, :breakpoint_window] = rp.extract_range(
-                    self.begin - (breakpoint_window / 2),
-                    self.begin + (breakpoint_window / 2),
-                    dummy=self.dummy)
-            self.tensor[self.n_pairs, breakpoint_window + split_marker:] = rp.extract_range(
-                    self.end - (breakpoint_window / 2),
-                    self.end + (breakpoint_window / 2),
-                    dummy=self.dummy)
+            self.tensor[self.n_pairs, :breakpoint_window] = self.encoder.encode_sam(
+                    rp.extract_range(
+                        self.begin - (breakpoint_window / 2),
+                        self.begin + (breakpoint_window / 2),
+                        dummy=self.dummy
+                    )
+            )
+            self.tensor[self.n_pairs, breakpoint_window + split_marker:] = self.encoder.encode_sam(
+                    rp.extract_range(
+                        self.end - (breakpoint_window / 2),
+                        self.end + (breakpoint_window / 2),
+                        dummy=self.dummy
+                    )
+            )
         else:
             l_center_pad = (full_window - (self.size + breakpoint_window) + 1) / 2
             r_center_pad = (full_window - (self.size + breakpoint_window)) / 2
-            self.tensor[self.n_pairs, l_center_pad: -r_center_pad] = rp.extract_range(
-                    self.begin - (breakpoint_window / 2),
-                    self.end + (breakpoint_window / 2),
-                    dummy=self.dummy)
+            self.tensor[self.n_pairs, l_center_pad: -r_center_pad] = self.encoder.encode_sam(
+                    rp.extract_range(
+                        self.begin - (breakpoint_window / 2),
+                        self.end + (breakpoint_window / 2),
+                        dummy=self.dummy
+                    )
+            )
 
         self.n_pairs += 1
 
@@ -202,8 +228,9 @@ class DeepSVTensor:
                  }
 
         for i in range(0, self.pairs_capacity):
+            read = self.encoder.decode_sam(self.tensor[i])
             for j in range(0, full_window):
-                draw.point((j, i), values[self.tensor[i, j]])
+                draw.point((j, i), values[read[j]])
 
         if self.is_split:
             for i in range(0, self.pairs_capacity):
@@ -224,8 +251,9 @@ def build_tensor(basename):
     record = metadata["record"]
     read_pairs = build_read_pairs(basename + ".sam")
     ref = RefSeq(basename + ".fa")
+    encoder = TensorEncoder()
 
-    tensor = DeepSVTensor(pairs_capacity=len(read_pairs), metadata=record)
+    tensor = DeepSVTensor(encoder=encoder, metadata=record, pairs_capacity=len(read_pairs))
     tensor.insert_ref(ref)
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
@@ -262,11 +290,17 @@ def process_variant(fname, index=None, verbose=False):
     if verbose and index:
         print(index, fname + ".png")
 
+def parrallel_process_variant(pair):
+    """
+    This is ugly, but for a function to be serializable it needs to be top level,
+    we cannot use a lambda in the `Pool.map` function.
+    """
+    (index, fname) = pair
+    process_variant(fname, index=index, verbose=True)
+
 if __name__ == "__main__":
     names = find_variant_files()
     for i, fname in enumerate(names[:]):
         process_variant(fname, index=i, verbose=True)
-    """
-    p = Pool(2)
-    p.map(process_variant, names)
-    """
+    #p = Pool(2)
+    #p.map(parrallel_process_variant, enumerate(names))
