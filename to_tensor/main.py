@@ -12,6 +12,7 @@ breakpoint_window = 2 * (median_read_size + median_insert_size)
 split_marker = 10
 full_window = 2 * breakpoint_window + split_marker
 
+
 def find_variant_files():
     fnames = glob.glob("../data/supporting_reads/NA12878/*sam")
     return [fname[:-4] for fname in fnames]
@@ -83,19 +84,49 @@ class SamRead:
 
 
 class TensorEncoder:
-    def __init__(self, n_channels=1, sam_channels=4, ref_channels=0):
-        #TODO(gamazeps): decent asserts for the channels
+    def __init__(self, n_channels=4, sam_channels=4, ref_channels=0):
+        assert(n_channels == (sam_channels + ref_channels))
         self.n_channels = n_channels
         self.sam_channels = sam_channels
         self.ref_channels = ref_channels
 
     def encode_sam(self, read):
-        (x,) = read.shape
-        return read.reshape((-1, 1))
+        """
+        hardcoded encoding, this is bad
+        """
+        encoding = {
+                " ": [0, 0, 0, 0],
+                "N": [0, 0, 0, 0],
+                "A": [1, 0, 0, 0],
+                "C": [0, 1, 0, 0],
+                "G": [0, 0, 1, 0],
+                "T": [0, 0, 0, 1],
+        }
 
-    def decode_sam(self, encoding):
-        (x, _) = encoding.shape
-        return encoding.reshape(x)
+        (x,) = read.shape
+        data = np.full((x, self.sam_channels), 0)
+        for i in range(0, x):
+            data[i] = encoding[read[i]]
+        return data
+
+    def decode_sam(self, encoding, dummy=' '):
+        """
+        hardcoded encoding, this is bad
+        """
+        (x, y) = encoding.shape
+        assert(y == self.sam_channels)
+        res = np.full(x, dummy)
+        for i in range(0, x):
+            # TODO(gamazeps): this is probably horribly slow
+            if encoding[i][0] == 1:
+                res[i] = "A"
+            elif encoding[i][1] == 1:
+                res[i] = "C"
+            elif encoding[i][2] == 1:
+                res[i] = "G"
+            elif encoding[i][3] == 1:
+                res[i] = "T"
+        return res
 
 
 class ReadPair:
@@ -167,11 +198,11 @@ class DeepSVTensor:
     def __init__(self, encoder, metadata, pairs_capacity):
         self.encoder = encoder
         self.metadata = metadata
-        self.begin = self.metadata["pos"] - (breakpoint_window / 2)
+        self.begin = self.metadata["pos"] - (breakpoint_window // 2)
         self.end = self.metadata["info"]["END"]["END"]
         self.size = self.end - self.begin
         self.pairs_capacity = pairs_capacity
-        self.tensor = np.full((pairs_capacity, full_window, 1), self.dummy)
+        self.tensor = np.full((pairs_capacity, full_window, encoder.n_channels), 0)
         self.n_pairs = 0
         self.is_split = self.size > breakpoint_window
         self.label = self.metadata["alt"][0]
@@ -184,25 +215,25 @@ class DeepSVTensor:
         if self.is_split:
             self.tensor[self.n_pairs, :breakpoint_window] = self.encoder.encode_sam(
                     rp.extract_range(
-                        self.begin - (breakpoint_window / 2),
-                        self.begin + (breakpoint_window / 2),
+                        self.begin - (breakpoint_window // 2),
+                        self.begin + (breakpoint_window // 2),
                         dummy=self.dummy
                     )
             )
             self.tensor[self.n_pairs, breakpoint_window + split_marker:] = self.encoder.encode_sam(
                     rp.extract_range(
-                        self.end - (breakpoint_window / 2),
-                        self.end + (breakpoint_window / 2),
+                        self.end - (breakpoint_window // 2),
+                        self.end + (breakpoint_window // 2),
                         dummy=self.dummy
                     )
             )
         else:
-            l_center_pad = (full_window - (self.size + breakpoint_window) + 1) / 2
-            r_center_pad = (full_window - (self.size + breakpoint_window)) / 2
+            l_center_pad = (full_window - (self.size + breakpoint_window) + 1) // 2
+            r_center_pad = (full_window - (self.size + breakpoint_window)) // 2
             self.tensor[self.n_pairs, l_center_pad: -r_center_pad] = self.encoder.encode_sam(
                     rp.extract_range(
-                        self.begin - (breakpoint_window / 2),
-                        self.end + (breakpoint_window / 2),
+                        self.begin - (breakpoint_window // 2),
+                        self.end + (breakpoint_window // 2),
                         dummy=self.dummy
                     )
             )
@@ -228,7 +259,7 @@ class DeepSVTensor:
                  }
 
         for i in range(0, self.pairs_capacity):
-            read = self.encoder.decode_sam(self.tensor[i])
+            read = self.encoder.decode_sam(self.tensor[i], dummy=self.dummy)
             for j in range(0, full_window):
                 draw.point((j, i), values[read[j]])
 
@@ -245,6 +276,26 @@ class DeepSVTensor:
 
         img.save(fname)
 
+    def tensor_voxel(self):
+        voxels = self.tensor
+        colors = np.empty(voxels.shape, dtype=object)
+
+        print "bite"
+        for i in range(0, self.pairs_capacity):
+            for j in range(0, full_window):
+                if voxels[i][j][0] == 1:
+                    colors[i, j, 0] = "orange"
+                elif voxels[i][j][1] == 1:
+                    colors[i, j, 1] = "green"
+                elif voxels[i][j][2] == 1:
+                    colors[i, j, 2] = "blue"
+                elif voxels[i][j][3] == 1:
+                    colors[i, j, 3] = "yellow"
+
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.voxels(voxels, facecolors=colors, edgecolor='k')
+        plt.show()
 
 def build_tensor(basename):
     metadata = get_json(basename + ".json")
