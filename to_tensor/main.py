@@ -5,6 +5,7 @@ import cPickle
 import json
 import numpy as np
 import sys
+import random
 
 median_read_size = 101
 median_insert_size = 400
@@ -363,14 +364,14 @@ class DeepSVTensor:
         img.save(fname)
 
 
-def build_tensor(basename):
+def build_tensor(basename, reads_limit=150):
     metadata = get_json(basename + ".json")
     record = metadata["record"]
-    read_pairs = build_read_pairs(basename + ".sam")
+    read_pairs = build_read_pairs(basename + ".sam", reads_limit)
     ref = RefSeq(basename + ".fa")
     encoder = TensorEncoder(n_channels=8, sam_channels=4, ref_channels=4)
 
-    tensor = DeepSVTensor(encoder=encoder, metadata=record, pairs_capacity=len(read_pairs))
+    tensor = DeepSVTensor(encoder=encoder, metadata=record, pairs_capacity=reads_limit)
     tensor.insert_ref(ref)
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
@@ -378,7 +379,7 @@ def build_tensor(basename):
     return tensor
 
 
-def build_read_pairs(fname):
+def build_read_pairs(fname, sample_limit):
     with open(fname, "r") as f:
         records = dict()
         for record in f:
@@ -388,8 +389,14 @@ def build_read_pairs(fname):
             if read.qname not in records:
                 records[read.qname] = ReadPair(read.qname)
             records[read.qname].add_read(read)
-    return sorted([v for (k, v) in records.iteritems()],
-                  key=lambda rp: rp.leftmost())
+
+        # Here we sample up to `sample_limit` reads at random
+        records_list = [v for (k, v) in records.iteritems()]
+        n_records = len(records_list)
+        sampled_indices = sorted(random.sample(range(n_records), min(n_records, sample_limit)))
+        sampled_records_list = [records_list[i] for i in sampled_indices]
+
+        return sorted(sampled_records_list, key=lambda rp: rp.leftmost())
 
 
 def get_json(fname):
