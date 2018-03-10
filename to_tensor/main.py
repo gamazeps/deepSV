@@ -14,8 +14,8 @@ split_marker = 10
 full_window = 2 * breakpoint_window + split_marker
 
 
-def find_variant_files():
-    fnames = glob.glob("../data/supporting_reads/NA12878/*sam")
+def find_variant_files(path, sample):
+    fnames = glob.glob("{}/{}/*sam".format(path, sample))
     return [fname[:-4] for fname in fnames]
 
 
@@ -426,6 +426,6 @@ def parrallel_process_variant(pair):
     process_variant(fname, index=index)
 
 if __name__ == "__main__":
-    names = find_variant_files()
+    names = find_variant_files("../data/supporting_reads", "NA12878")
     for i, fname in enumerate(names[:]):
-        _ = process_variant(fname, index=i)
+        _ = process_variant(fname, index=i, draw=False)
