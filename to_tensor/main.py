@@ -438,6 +438,8 @@ def par_process_sample(pair):
 
 
 def main():
+    global global_conf
+
     if len(sys.argv) != 3:
         print("Please provide 2 arguments: configuration.json whitelist")
         sys.exit(1)
@@ -451,8 +453,8 @@ def main():
     samples_size = len(samples)
     print("There is a total of {} reads to process".format(samples_size))
 
-    p = Pool(32)
-    _ = p.map(par_process_sample, samples)
+    p = Pool(2)
+    _ = p.map(par_process_sample, enumerate(samples))
 
     #for i, sample in enumerate(samples):
     #    process_sample(conf, sample)
