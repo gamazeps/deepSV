@@ -1,7 +1,7 @@
 {
     "destination_dir": "/home/felix/data/deepSV/supporting_reads",
     "data_dir": "/mnt/disk1/felix/raw",
-    "vcf_path": "home/felix/data/deepSV/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf",
+    "vcf_path": "/home/felix/data/deepSV/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf",
     "refence_path": "/home/felix/data/deepSV/hs37d5.fa",
     "n_threads": 64
 }
