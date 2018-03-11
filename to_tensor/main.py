@@ -1,7 +1,7 @@
 import glob
 from multiprocessing import Pool
 from PIL import Image, ImageDraw
-import cPickle
+import cPickle as pickle
 import json
 import numpy as np
 import sys
@@ -425,14 +425,17 @@ def process_variant(fname, index=None, draw=False):
 
 def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
-    for i, fname in enumerate(names[:]):
-        _ = process_variant(fname, index=i, draw=False)
+    tensors = [process_variant(fname, index=i, draw=False) for (i, fname) in enumerate(names)]
+
+    with open("{}/{}.pckl".format(conf["tensors_path"], sample), "w") as f:
+        pickle.dump(tensors, f)
 
 
 def main():
     if len(sys.argv) != 3:
         print("Please provide 2 arguments: configuration.json whitelist")
         sys.exit(1)
+
     conf_fname = sys.argv[1]
     whitelist_fname = sys.argv[2]
 
