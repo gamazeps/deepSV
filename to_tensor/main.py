@@ -408,6 +408,11 @@ def get_json(fname):
     return metadata
 
 
+def get_samples(fname):
+    with open(fname, "r") as f:
+        return [l.strip() for l in f]
+
+
 def process_variant(fname, index=None, draw=False):
     tensor = build_tensor(fname)
     if index:
@@ -417,15 +422,28 @@ def process_variant(fname, index=None, draw=False):
         print(index, fname + ".png")
     return tensor
 
-def parrallel_process_variant(pair):
-    """
-    This is ugly, but for a function to be serializable it needs to be top level,
-    we cannot use a lambda in the `Pool.map` function.
-    """
-    (index, fname) = pair
-    process_variant(fname, index=index)
 
-if __name__ == "__main__":
-    names = find_variant_files("../data/supporting_reads", "NA12878")
+def process_sample(conf, sample):
+    names = find_variant_files(conf["reads_path"], sample)
     for i, fname in enumerate(names[:]):
         _ = process_variant(fname, index=i, draw=False)
+
+
+def main():
+    if len(sys.argv) != 3:
+        print("Please provide 2 arguments: configuration.json whitelist")
+        sys.exit(1)
+    conf_fname = sys.argv[1]
+    whitelist_fname = sys.argv[2]
+
+    conf = get_json(conf_fname)
+    samples = get_samples(whitelist_fname)
+
+    for sample in samples:
+        process_sample(conf, sample)
+
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
