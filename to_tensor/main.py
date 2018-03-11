@@ -12,7 +12,7 @@ median_insert_size = 400
 breakpoint_window = 2 * (median_read_size + median_insert_size)
 split_marker = 10
 full_window = 2 * breakpoint_window + split_marker
-
+global_conf = None
 
 def find_variant_files(path, sample):
     fnames = glob.glob("{}/{}/*sam".format(path, sample))
@@ -425,10 +425,16 @@ def process_variant(fname, index=None, draw=False):
 
 def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
-    tensors = [process_variant(fname, index=i, draw=False) for (i, fname) in enumerate(names)]
+    tensors = [process_variant(fname) for fname in names]
 
     with open("{}/{}.pckl".format(conf["tensors_path"], sample), "w") as f:
         pickle.dump(tensors, f)
+
+
+def par_process_sample(pair):
+    process_sample(global_conf, pair[1])
+    print("processed {}th sample, {}".format(pair[0], pair[1]))
+    return 0
 
 
 def main():
@@ -439,11 +445,17 @@ def main():
     conf_fname = sys.argv[1]
     whitelist_fname = sys.argv[2]
 
-    conf = get_json(conf_fname)
+    global_conf = get_json(conf_fname)
     samples = get_samples(whitelist_fname)
 
-    for sample in samples:
-        process_sample(conf, sample)
+    samples_size = len(samples)
+    print("There is a total of {} reads to process".format(samples_size))
+
+    p = Pool(32)
+    _ = p.map(par_process_sample, samples)
+
+    #for i, sample in enumerate(samples):
+    #    process_sample(conf, sample)
 
     sys.exit(0)
 
