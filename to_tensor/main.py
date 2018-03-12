@@ -1,7 +1,7 @@
 import glob
 from multiprocessing import Pool
 from PIL import Image, ImageDraw
-import cPickle as pickle
+import cPickle
 import json
 import numpy as np
 import sys
@@ -427,8 +427,9 @@ def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
     tensors = [process_variant(fname) for fname in names]
 
-    with open("{}/{}.pckl".format(conf["tensors_path"], sample), "w") as f:
-        pickle.dump(tensors, f)
+    print("start pickling")
+    with open("{}/{}.pckl".format(conf["tensors_path"], sample), "wb") as f:
+        cPickle.dump(tensors, f, cPickle.HIGHEST_PROTOCOL)
 
 
 def par_process_sample(pair):
@@ -453,7 +454,7 @@ def main():
     samples_size = len(samples)
     print("There is a total of {} reads to process".format(samples_size))
 
-    p = Pool(2)
+    p = Pool(1)
     _ = p.map(par_process_sample, enumerate(samples))
 
     #for i, sample in enumerate(samples):
