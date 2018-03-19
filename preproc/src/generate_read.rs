@@ -90,6 +90,9 @@ pub fn generate_reads(record: VCFRecord, config: &Config) {
         let metadata = VarianrtMetadata::new(record, fname_fa, fname_sam);
         metadata.write_to_file(fname_json);
     }
+    else {
+        println!("FUUUUUUUUUUUUUCK");
+    }
 }
 
 fn fname_ext(conf: &Config, sample: String, id: String, sv_type: String,
