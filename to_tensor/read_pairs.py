@@ -1,9 +1,9 @@
 import numpy as np
 
-class RefRead:
+class RefRead(object):
     #TODO(gamazeps) make a superclass for SAM and FASTA seq like that
-    def __init__(self, chr, begin, end, seq=""):
-        self.chr = chr
+    def __init__(self, chrom, begin, end, seq=""):
+        self.chrom = chrom
         self.pos = begin - 1 # FIXME(gamazeps): this is an ugly hack
         self.end = end
         self.seq = seq
@@ -15,7 +15,7 @@ class RefRead:
         self.seq += seq
 
 
-class RefSeq:
+class RefSeq(object):
     #TODO(gamazeps) make a superclass for SAM and FASTA pairs
     def __init__(self, fname):
         """
@@ -30,9 +30,9 @@ class RefSeq:
                     if curr is not None:
                         res.append(curr)
                     parts = l[1:].strip().split(":")
-                    chr = parts[0]
+                    chrom = parts[0]
                     (beg, end) = parts[1].split("-")
-                    curr = RefRead(chr, int(beg), int(end))
+                    curr = RefRead(chrom, int(beg), int(end))
                 else:
                     curr.append_seq(l.strip())
             assert(len(curr.seq) == (curr.end - curr.pos))
@@ -64,7 +64,7 @@ class RefSeq:
                 elif read.pos < begin and read.end < end:
                     res[: read.end - begin] = read.align()[-(read.end - begin):]
                     assert(np.array_equal(res[:read.end - begin],
-                        read.align()[-(read.end - begin):]))
+                                          read.align()[-(read.end - begin):]))
                 elif read.pos > begin and read.end > end:
                     res[read.pos - begin:] = read.align()[:-(read.end - end)]
                     assert(np.array_equal(res[read.pos - begin:],
@@ -78,23 +78,23 @@ class RefSeq:
         return res
 
 
-class SamRead:
+class SamRead(object):
     def __init__(self, sam_record):
         """
         TODO(gamazeps): this is awfull
         """
         tokens = sam_record.split('\t')
         self.qname = tokens[0]
-        self.flag  = int(tokens[1])
+        self.flag = int(tokens[1])
         self.rname = tokens[2]
-        self.pos   = int(tokens[3])
-        self.mapq  = tokens[4]
+        self.pos = int(tokens[3])
+        self.mapq = tokens[4]
         self.cigar = tokens[5]
         self.rnext = tokens[6]
         self.pnext = tokens[7]
-        self.tlen  = tokens[8]
-        self.seq   = tokens[9]
-        self.qual  = tokens[10]
+        self.tlen = tokens[8]
+        self.seq = tokens[9]
+        self.qual = tokens[10]
 
         self.size = len(self.seq)
         self.end = self.pos + self.size
@@ -104,7 +104,7 @@ class SamRead:
         return [c for c in self.seq]
 
 
-class ReadPair:
+class ReadPair(object):
     def __init__(self, name):
         self.name = name
         self.first = None
@@ -121,17 +121,17 @@ class ReadPair:
     def add_read(self, read):
         if read.flag & 64:
             # first read of the pair
-            assert(self.first == None)
+            assert(self.first is None)
             self.first = read
         elif read.flag & 128:
             # second red in the readpair
-            assert(self.second == None)
+            assert(self.second is None)
             self.second = read
         else:
             assert False, "adding an alone read to a pair " + str(read.flag)
 
     def paired(self):
-        return not (self.first == None or self.second == None)
+        return not (self.first is None or self.second is None)
 
     def extract_range(self, begin, end, dummy=' '):
         assert(begin < end)
@@ -153,7 +153,7 @@ class ReadPair:
                 elif read.pos < begin and read.end < end:
                     res[: read.end - begin] = read.align()[-(read.end - begin):]
                     assert(np.array_equal(res[:read.end - begin],
-                        read.align()[-(read.end - begin):]))
+                                          read.align()[-(read.end - begin):]))
                 elif read.pos > begin and read.end > end:
                     res[read.pos - begin:] = read.align()[:-(read.end - end)]
                     assert(np.array_equal(res[read.pos - begin:],

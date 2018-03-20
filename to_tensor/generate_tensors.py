@@ -1,15 +1,12 @@
 import glob
 from multiprocessing import Pool
-from PIL import Image, ImageDraw
 import cPickle
-import json
-import numpy as np
 import sys
 import random
 
-from readPairs import SamRead, ReadPair, RefSeq
+from read_pairs import SamRead, ReadPair, RefSeq
 from utils import get_json
-from deepSVTensor import TensorEncoder, DeepSVTensor
+from deepsv_tensor import TensorEncoder, DeepSVTensor
 
 global_conf = None
 
@@ -45,7 +42,7 @@ def build_read_pairs(fname, sample_limit):
             records[read.qname].add_read(read)
 
         # Here we sample up to `sample_limit` reads at random
-        records_list = [v for (k, v) in records.iteritems()]
+        records_list = [v for (_, v) in records.iteritems()]
         n_records = len(records_list)
         sampled_indices = sorted(random.sample(range(n_records), min(n_records, sample_limit)))
         sampled_records_list = [records_list[i] for i in sampled_indices]
@@ -103,9 +100,10 @@ def main():
 
     if n_threads > 1:
         p = Pool(n_threads)
-        _ = p.map(par_process_sample, enumerate(samples))
+        p.map(par_process_sample, enumerate(samples))
     else:
         for i, sample in enumerate(samples):
+            print("processed {}th sample, {}".format(i, sample))
             process_sample(global_conf, sample)
 
     sys.exit(0)
