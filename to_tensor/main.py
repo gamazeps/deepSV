@@ -454,11 +454,14 @@ def main():
     samples_size = len(samples)
     print("There is a total of {} reads to process".format(samples_size))
 
-    p = Pool(1)
-    _ = p.map(par_process_sample, enumerate(samples))
+    n_threads = global_conf.get("n_threads", 1)
 
-    #for i, sample in enumerate(samples):
-    #    process_sample(conf, sample)
+    if n_threads > 1:
+        p = Pool(n_threads)
+        _ = p.map(par_process_sample, enumerate(samples))
+    else:
+        for i, sample in enumerate(samples):
+            process_sample(global_conf, sample)
 
     sys.exit(0)
 
