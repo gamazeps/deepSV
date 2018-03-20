@@ -1,0 +1,5 @@
+{
+    "reads_path": "../data/supporting_reads",
+    "tensors_path": "../data/tensors",
+    "n_threads": 1
+}
