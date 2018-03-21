@@ -1,0 +1,4 @@
+{
+    "reads_path": "/mnt/disk1/felix/supporting_reads",
+    "tensors_path": "/mnt/disk2/felix/tensors"
+}
