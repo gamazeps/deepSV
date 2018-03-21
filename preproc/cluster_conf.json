@@ -1,8 +1,8 @@
 {
-    "destination_dir": "/mnt/disk1/felix/supporting_reads",
+    "destination_dir": "/mnt/disk2/felix/supporting_reads",
     "data_dir": "/mnt/disk1/felix/raw",
-    "vcf_path": "/home/felix/data/deepSV/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf",
-    "refence_path": "/home/felix/data/deepSV/hs37d5.fa",
+    "vcf_path": "/mnt/disk1/felix/estd219_1000_Genomes_Consortium_Phase_3_Integrated_SV.GRCh37.submitted.variant_call.germline.vcf",
+    "refence_path": "/mnt/disk1/felix/hs37d5.fa",
     "n_threads": 32
 }
 
