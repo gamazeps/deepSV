@@ -3,9 +3,10 @@ from multiprocessing import Pool
 import cPickle
 import sys
 import random
+import logging
 
 from read_pairs import SamRead, ReadPair, RefSeq
-from utils import get_json
+import utils
 from deepsv_tensor import TensorEncoder, DeepSVTensor
 
 global_conf = None
@@ -16,7 +17,7 @@ def find_variant_files(path, sample):
 
 
 def build_tensor(basename, reads_limit=150):
-    metadata = get_json(basename + ".json")
+    metadata = utils.get_json(basename + ".json")
     record = metadata["record"]
     read_pairs = build_read_pairs(basename + ".sam", reads_limit)
     ref = RefSeq(basename + ".fa")
@@ -55,13 +56,11 @@ def get_whitelist(fname):
         return [l.strip() for l in f]
 
 
-def process_variant(fname, index=None, draw=False):
+def process_variant(fname, draw=False):
     tensor = build_tensor(fname)
-    if index:
-        print(index)
     if draw:
-        tensor.dummy_image(fname + ".png", draw_bp=True)
-        print(index, fname + ".png")
+        tensor.dummy_image("{}.png".format(fname), draw_bp=True)
+        logging.info("{}.png".format(fname))
     return tensor
 
 
@@ -69,14 +68,14 @@ def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
     tensors = [process_variant(fname) for fname in names]
 
-    print("start pickling")
+    logging.info("start pickling {}".format(sample))
     with open("{}/{}.pckl".format(conf["tensors_path"], sample), "wb") as f:
         cPickle.dump(tensors, f, cPickle.HIGHEST_PROTOCOL)
 
 
 def par_process_sample(pair):
     process_sample(global_conf, pair[1])
-    print("processed {}th sample, {}".format(pair[0], pair[1]))
+    logging.info("processed {}th sample, {}".format(pair[0], pair[1]))
     return 0
 
 
@@ -87,14 +86,16 @@ def main():
         print("Please provide 2 arguments: configuration.json whitelist")
         sys.exit(1)
 
+    utils.set_logging()
+
     conf_fname = sys.argv[1]
     whitelist_fname = sys.argv[2]
 
-    global_conf = get_json(conf_fname)
+    global_conf = utils.get_json(conf_fname)
     samples = get_whitelist(whitelist_fname)
 
     samples_size = len(samples)
-    print("There is a total of {} reads to process".format(samples_size))
+    logging.info("There is a total of {} reads to process".format(samples_size))
 
     n_threads = global_conf.get("n_threads", 1)
 
@@ -103,9 +104,10 @@ def main():
         p.map(par_process_sample, enumerate(samples))
     else:
         for i, sample in enumerate(samples):
-            print("processed {}th sample, {}".format(i, sample))
+            logging.info("processed {}th sample, {}".format(i, sample))
             process_sample(global_conf, sample)
 
+    logging.info("Finished generating tensors")
     sys.exit(0)
 
 
