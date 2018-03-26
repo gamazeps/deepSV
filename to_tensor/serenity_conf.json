@@ -1,5 +1,5 @@
 {
     "reads_path": "../data/supporting_reads",
-    "tensors_path": "../data/tensors",
+    "tensors_path": "../data/tensors/tensors.hdf5",
     "n_threads": 1
 }
