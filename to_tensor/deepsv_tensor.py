@@ -206,3 +206,13 @@ class DeepSVTensor(object):
                 draw.point((FULL_WINDOW - (BREAKPOINT_WINDOW / 2), i), (255, 255, 255))
 
         img.save(fname)
+
+    def label(self):
+        label_to_int = {
+            "DEL": 1,
+            "DUP": 2,
+            "INV": 3,
+            "INS": 4,
+            "CNV": 5
+        }
+        return label_to_int[self.metadata["info"]["SVTYPE"]["SVTYPE"]]
