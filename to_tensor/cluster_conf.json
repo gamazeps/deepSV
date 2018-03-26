@@ -1,4 +1,5 @@
 {
-    "reads_path": "/mnt/disk1/felix/supporting_reads",
-    "tensors_path": "/mnt/disk2/felix/tensors"
+    "reads_path": "/mnt/disk2/felix/supporting_reads",
+    "tensors_path": "/mnt/disk3/felix/tensors",
+    "n_threads": 32
 }

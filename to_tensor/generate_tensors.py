@@ -13,7 +13,6 @@ import deepsv_tensor
 import disk_storage
 
 global_conf = None
-hdf5_file = None
 count = 0
 
 def find_variant_files(path, sample):
@@ -69,14 +68,10 @@ def process_variant(fname, draw=False):
     return tensor
 
 
-def process_sample(conf, sample, hfile):
-    global count
-    count += 1
-    local_count = count
-
+def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
     tensors = [process_variant(fname) for fname in names]
-    logging.info("done processing {}, {}".format(sample, local_count))
+    logging.info("done processing {}".format(sample))
 
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
@@ -85,15 +80,15 @@ def process_sample(conf, sample, hfile):
     labels = [t.label() for t in tensors]
     metadata = [json.dumps(t.metadata) for t in tensors]
 
-    grp = hfile.create_group(sample)
-    data_dset= grp.create_dataset("data", data=raw_data, compression="gzip")
-    labels_dset= grp.create_dataset("labels", data=labels, compression="gzip")
-    metadata_dset= grp.create_dataset("metadata", data=metadata, compression="gzip", dtype=dt)
-    logging.info("done saving {} to hdf5, 1".format(sample, local_count))
+    with h5py.File("{}/{}.hdf5".format(conf["tensors_path"], sample), "w") as f:
+        data_dset= f.create_dataset("data", data=raw_data, compression="gzip")
+        labels_dset= f.create_dataset("labels", data=labels, compression="gzip")
+        metadata_dset= f.create_dataset("metadata", data=metadata, compression="gzip", dtype=dt)
+    logging.info("done saving {} to hdf5".format(sample))
 
 
 def par_process_sample(sample):
-    process_sample(global_conf, sample, hdf5_file)
+    process_sample(global_conf, sample)
     return 0
 
 
@@ -101,7 +96,6 @@ def main():
     # The global variables are ugly, but we need them to be global so that they
     # can de passed to multi_processing
     global global_conf
-    global hdf5_file
 
     if len(sys.argv) != 3:
         print("Please provide 2 arguments: configuration.json whitelist")
@@ -116,19 +110,17 @@ def main():
     samples = get_whitelist(whitelist_fname)
 
     samples_size = len(samples)
-    logging.info("There is a total of {} reads to process".format(samples_size))
+    logging.info("There is a total of {} samples to process".format(samples_size))
 
     n_threads = global_conf.get("n_threads", 1)
-    hdf5_file = h5py.File(global_conf["tensors_path"], "w")
 
     if n_threads > 1:
         p = Pool(n_threads)
         p.map(par_process_sample, samples)
     else:
         for sample in samples:
-            process_sample(global_conf, sample, hdf5_file)
+            process_sample(global_conf, sample)
 
-    hdf5_file.close()
     logging.info("Finished generating tensors")
     sys.exit(0)
 
