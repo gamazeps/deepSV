@@ -10,7 +10,6 @@ import json
 from read_pairs import SamRead, ReadPair, RefSeq
 import utils
 import deepsv_tensor
-import disk_storage
 
 global_conf = None
 count = 0
