@@ -1,13 +1,16 @@
 import glob
+import h5py
 from multiprocessing import Pool
 import cPickle
 import sys
 import random
 import logging
+import json
 
 from read_pairs import SamRead, ReadPair, RefSeq
 import utils
-from deepsv_tensor import TensorEncoder, DeepSVTensor
+import deepsv_tensor
+import disk_storage
 
 global_conf = None
 
@@ -21,9 +24,9 @@ def build_tensor(basename, reads_limit=150):
     record = metadata["record"]
     read_pairs = build_read_pairs(basename + ".sam", reads_limit)
     ref = RefSeq(basename + ".fa")
-    encoder = TensorEncoder(n_channels=8, sam_channels=4, ref_channels=4)
+    encoder = deepsv_tensor.TensorEncoder(n_channels=8, sam_channels=4, ref_channels=4)
 
-    tensor = DeepSVTensor(encoder=encoder, metadata=record, pairs_capacity=reads_limit)
+    tensor = deepsv_tensor.DeepSVTensor(encoder=encoder, metadata=record, pairs_capacity=reads_limit)
     tensor.insert_ref(ref)
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
@@ -67,10 +70,17 @@ def process_variant(fname, draw=False):
 def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
     tensors = [process_variant(fname) for fname in names]
+    # Needed for encoding the json metadata
+    dt = h5py.special_dtype(vlen=bytes)
 
-    logging.info("start pickling {}".format(sample))
-    with open("{}/{}.pckl".format(conf["tensors_path"], sample), "wb") as f:
-        cPickle.dump(tensors, f, cPickle.HIGHEST_PROTOCOL)
+    raw_data = [t.tensor for t in tensors]
+    labels = [t.label() for t in tensors]
+    metadata = [json.dumps(t.metadata) for t in tensors]
+    with h5py.File("{}/{}.hdf5".format(conf["tensors_path"], sample), "w") as f:
+        data_dset= f.create_dataset("data", data=raw_data, compression="gzip")
+        labels_dset= f.create_dataset("labels", data=labels, compression="gzip")
+        metadata_dset= f.create_dataset("metadata", data=metadata, compression="gzip", dtype=dt)
+    logging.info("done saving to hdf5".format(sample))
 
 
 def par_process_sample(pair):
@@ -104,8 +114,8 @@ def main():
         p.map(par_process_sample, enumerate(samples))
     else:
         for i, sample in enumerate(samples):
-            logging.info("processed {}th sample, {}".format(i, sample))
             process_sample(global_conf, sample)
+            logging.info("processed {}th sample, {}".format(i, sample))
 
     logging.info("Finished generating tensors")
     sys.exit(0)
