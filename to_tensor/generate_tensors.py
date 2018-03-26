@@ -1,14 +1,20 @@
 import glob
+import h5py
 from multiprocessing import Pool
 import cPickle
 import sys
 import random
+import logging
+import json
 
 from read_pairs import SamRead, ReadPair, RefSeq
-from utils import get_json
-from deepsv_tensor import TensorEncoder, DeepSVTensor
+import utils
+import deepsv_tensor
+import disk_storage
 
 global_conf = None
+hdf5_file = None
+count = 0
 
 def find_variant_files(path, sample):
     fnames = glob.glob("{}/{}/*sam".format(path, sample))
@@ -16,13 +22,13 @@ def find_variant_files(path, sample):
 
 
 def build_tensor(basename, reads_limit=150):
-    metadata = get_json(basename + ".json")
+    metadata = utils.get_json(basename + ".json")
     record = metadata["record"]
     read_pairs = build_read_pairs(basename + ".sam", reads_limit)
     ref = RefSeq(basename + ".fa")
-    encoder = TensorEncoder(n_channels=8, sam_channels=4, ref_channels=4)
+    encoder = deepsv_tensor.TensorEncoder(n_channels=8, sam_channels=4, ref_channels=4)
 
-    tensor = DeepSVTensor(encoder=encoder, metadata=record, pairs_capacity=reads_limit)
+    tensor = deepsv_tensor.DeepSVTensor(encoder=encoder, metadata=record, pairs_capacity=reads_limit)
     tensor.insert_ref(ref)
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
@@ -55,57 +61,75 @@ def get_whitelist(fname):
         return [l.strip() for l in f]
 
 
-def process_variant(fname, index=None, draw=False):
+def process_variant(fname, draw=False):
     tensor = build_tensor(fname)
-    if index:
-        print(index)
     if draw:
-        tensor.dummy_image(fname + ".png", draw_bp=True)
-        print(index, fname + ".png")
+        tensor.dummy_image("{}.png".format(fname), draw_bp=True)
+        logging.info("{}.png".format(fname))
     return tensor
 
 
-def process_sample(conf, sample):
+def process_sample(conf, sample, hfile):
+    global count
+    count += 1
+    local_count = count
+
     names = find_variant_files(conf["reads_path"], sample)
     tensors = [process_variant(fname) for fname in names]
+    logging.info("done processing {}, {}".format(sample, local_count))
 
-    print("start pickling")
-    with open("{}/{}.pckl".format(conf["tensors_path"], sample), "wb") as f:
-        cPickle.dump(tensors, f, cPickle.HIGHEST_PROTOCOL)
+    # Needed for encoding the json metadata
+    dt = h5py.special_dtype(vlen=bytes)
+
+    raw_data = [t.tensor for t in tensors]
+    labels = [t.label() for t in tensors]
+    metadata = [json.dumps(t.metadata) for t in tensors]
+
+    grp = hfile.create_group(sample)
+    data_dset= grp.create_dataset("data", data=raw_data, compression="gzip")
+    labels_dset= grp.create_dataset("labels", data=labels, compression="gzip")
+    metadata_dset= grp.create_dataset("metadata", data=metadata, compression="gzip", dtype=dt)
+    logging.info("done saving {} to hdf5, 1".format(sample, local_count))
 
 
-def par_process_sample(pair):
-    process_sample(global_conf, pair[1])
-    print("processed {}th sample, {}".format(pair[0], pair[1]))
+def par_process_sample(sample):
+    process_sample(global_conf, sample, hdf5_file)
     return 0
 
 
 def main():
+    # The global variables are ugly, but we need them to be global so that they
+    # can de passed to multi_processing
     global global_conf
+    global hdf5_file
 
     if len(sys.argv) != 3:
         print("Please provide 2 arguments: configuration.json whitelist")
         sys.exit(1)
 
+    utils.set_logging()
+
     conf_fname = sys.argv[1]
     whitelist_fname = sys.argv[2]
 
-    global_conf = get_json(conf_fname)
+    global_conf = utils.get_json(conf_fname)
     samples = get_whitelist(whitelist_fname)
 
     samples_size = len(samples)
-    print("There is a total of {} reads to process".format(samples_size))
+    logging.info("There is a total of {} reads to process".format(samples_size))
 
     n_threads = global_conf.get("n_threads", 1)
+    hdf5_file = h5py.File(global_conf["tensors_path"], "w")
 
     if n_threads > 1:
         p = Pool(n_threads)
-        p.map(par_process_sample, enumerate(samples))
+        p.map(par_process_sample, samples)
     else:
-        for i, sample in enumerate(samples):
-            print("processed {}th sample, {}".format(i, sample))
-            process_sample(global_conf, sample)
+        for sample in samples:
+            process_sample(global_conf, sample, hdf5_file)
 
+    hdf5_file.close()
+    logging.info("Finished generating tensors")
     sys.exit(0)
 
 
