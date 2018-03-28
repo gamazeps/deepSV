@@ -76,6 +76,9 @@ def process_sample(conf, sample):
     tensors = [process_variant(fname) for fname in names]
     logging.info("done processing {}".format(sample))
 
+    if len(tensors) == 0:
+        return
+
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
 
