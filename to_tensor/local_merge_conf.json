@@ -1,0 +1,4 @@
+{
+    "samples_path": "../data/tensors",
+    "merged_tensor_path": "../data/tensors.hdf5"
+}
