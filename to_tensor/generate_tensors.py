@@ -69,6 +69,10 @@ def process_variant(fname, draw=False):
 
 def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
+    # TODO(gamazeps): keeping all the tensors in memory uses a lot of RAM for nothing.
+    # The tensors could be written one by one, however we have enough memory on the cluster
+    # to do that with 32 threads in parrallel (750GB used at the max).
+    # It could easily be optimized by writing the tensors one by one to hdf5.
     tensors = [process_variant(fname) for fname in names]
     logging.info("done processing {}".format(sample))
 
