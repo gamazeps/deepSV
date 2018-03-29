@@ -87,9 +87,9 @@ def process_sample(conf, sample):
     metadata = [json.dumps(t.metadata) for t in tensors]
 
     with h5py.File("{}/{}.hdf5".format(conf["tensors_path"], sample), "w") as f:
-        data_dset= f.create_dataset("data", data=raw_data, compression="gzip")
-        labels_dset= f.create_dataset("labels", data=labels, compression="gzip")
-        metadata_dset= f.create_dataset("metadata", data=metadata, compression="gzip", dtype=dt)
+        data_dset= f.create_dataset("data", data=raw_data, compression="lzf")
+        labels_dset= f.create_dataset("labels", data=labels, compression="lzf", dtype="i8")
+        metadata_dset= f.create_dataset("metadata", data=metadata, compression="lzf", dtype=dt)
     logging.info("done saving {} to hdf5".format(sample))
 
 
