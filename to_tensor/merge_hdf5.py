@@ -3,6 +3,7 @@ import glob
 import logging
 import sys
 from multiprocessing import Pool
+import os
 
 import utils
 
@@ -60,38 +61,53 @@ def merge_samples(fnames, ofile):
 
 def par_merge(pair):
     (i, fnames) = pair
-    merge_samples(fnames, "{}/{}.hdf5".format(out_dir, i))
+    new_name = "{}/{}.hdf5".format(out_dir, i)
+    merge_samples(fnames, new_name)
     logging.info("Done merging {}".format(fnames))
-    return None
+    return new_name
 
 
 def main():
     global out_dir
 
     if len(sys.argv) != 4:
-        print("Please provide 3 arguments: conf.json in_dir out_dir")
+        print("Please provide 3 arguments: conf.json in_dir root_dir")
         sys.exit(1)
 
     in_dir = sys.argv[2]
-    out_dir = sys.argv[3]
+    root_dir = sys.argv[3]
+
+    step = 0
 
     utils.set_logging()
 
     fnames = glob.glob("{}/*.hdf5".format(in_dir))
-    paired_fnames = pair_files(fnames)
-
-    logging.info("Will merge {} files".format(len(fnames)))
-
-    conf = utils.get_json(sys.argv[1])
-    n_threads = conf.get("n_threads", 1)
 
     if n_threads > 1:
         p = Pool(n_threads)
-        p.map(par_merge, enumerate(paired_fnames))
-    else:
-        [par_merge(pair) for pair in enumerate(paired_fnames)]
 
-    logging.info("Finished merging")
+    while len(fnames) > 1:
+        logging.info("Starting merge phase {}".format(step))
+        out_dir = "{}/iter_{}".format(root_dir, step)
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
+        paired_fnames = pair_files(fnames)
+
+        logging.info("Will merge {} files".format(len(fnames)))
+
+        conf = utils.get_json(sys.argv[1])
+        n_threads = conf.get("n_threads", 1)
+
+        if n_threads > 1:
+            fnames = p.map(par_merge, enumerate(paired_fnames))
+        else:
+            fnames = [par_merge(pair) for pair in enumerate(paired_fnames)]
+
+        logging.info("Finished merge phase {}".format(step))
+        step += 1
+
+    logging.info("Finished merging, final folder is: {}".format(out_dir))
 
 
 if __name__ == "__main__":
