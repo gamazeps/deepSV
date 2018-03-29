@@ -26,6 +26,9 @@ def merge_samples(samples, ofile):
     (window_size, reads, channels)  = (None, None, None)
     for fname in fnames:
         with h5py.File(fname, "r") as f:
+            if "metadata" not in f.keys() or "labels" not in f.keys() or "data" not in f.keys():
+                print("{} is fucked up".format(fname))
+                continue
             (curr_var, curr_window_size, curr_reads, curr_channels) = f["data"].shape
             n_var += curr_var
 
@@ -37,6 +40,8 @@ def merge_samples(samples, ofile):
             if window_size is not None:
                 assert(window_size == curr_window_size)
             (window_size, reads, channels)  = (curr_window_size, curr_reads, curr_channels)
+
+    logging.info("There are {} variants".format(n_var))
 
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
