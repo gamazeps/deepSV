@@ -1,3 +1,6 @@
+import json
+import sys
+
 folders = [
     "HG00096",
     "HG00097",
@@ -2951,27 +2954,65 @@ folders = [
     "NA21144"
 ]
 
-def generate_targets(nodes = 10):
-    node = 10
-    cnt = 0
-    for i in range(0, nodes):
+
+def generate_targets(conf):
+    hostnames = conf["nodes"]
+    n_nodes = len(hostnames)
+    for (i, host) in enumerate(hostnames):
         targets = list()
-        for j in range(i, len(folders), nodes):
+
+        for j in range(i, len(folders), n_nodes):
             targets.append(folders[j])
 
-        commands = list()
-        commands.append("set -x\n")
-        commands.append("mkdir -p /mnt/disk1/felix/raw\n")
-        for target in targets:
-            commands.append("cp -R reads/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/"
-                    + target + "/alignment /mnt/disk1/felix/raw/" + target + "\n"
-                    )
-        f = open("targets_node" + str(node + i), "w")
-        for target in targets:
-            f.write(target + "\n")
-        f = open("copy_node" + str(node + i) + ".sh", "w")
-        for command in commands:
-            f.write(command)
+        with open("targets_{}".format(host), "w") as f:
+            for target in targets:
+                f.write(target + "\n")
+
+        if conf["generate_fetch_command"]:
+            save_dir = conf["save_dir"]
+            commands = list()
+            commands.append("set -ex\n")
+            for target in targets:
+                commands.append(
+                    "wget --recursive --continue --accept='*.mapped.*.bam' "
+                    "'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/{}/alignment' "
+                    "-P {}\n"
+                    .format(target, save_dir)
+                )
+                commands.append(
+                    "wget --recursive --continue --accept='*.mapped.*.bam.bai' "
+                    "'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/{}/alignment' "
+                    "-P {}\n"
+                    .format(target, save_dir)
+                )
+                commands.append(
+                    "wget --recursive --continue --accept='*.mapped.*.bam.bas' "
+                    "'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/{}/alignment' "
+                    "-P {}\n"
+                    .format(target, save_dir)
+                )
+
+                with open("fetch_data_{}.sh".format(host), "w") as f:
+                    for c in commands:
+                        f.write(c)
+
+
+def get_json(fname):
+    """
+    Gets the metadata from the json file
+    """
+    with open(fname, "r") as f:
+        metadata = json.load(f)
+    return metadata
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("Please provide 1 argument: conf.json")
+
+    conf = get_json(sys.argv[1])
+    generate_targets(conf)
+
 
 if __name__ == "__main__":
-    generate_targets()
+    main()
