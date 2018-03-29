@@ -1,0 +1,4 @@
+{
+    "samples_path": "/mnt/disk3/felix/tensors",
+    "merged_tensor_path": "/mnt/disk3/felix/tensors.hdf5"
+}
