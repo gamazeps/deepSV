@@ -20,15 +20,12 @@ def pair_files(fnames):
     return res
 
 
-def merge_samples(samples, ofile):
+def merge_samples(fnames, ofile):
     # We need the total amount of variants before merging
     n_var = 0
     (window_size, reads, channels)  = (None, None, None)
     for fname in fnames:
         with h5py.File(fname, "r") as f:
-            if "metadata" not in f.keys() or "labels" not in f.keys() or "data" not in f.keys():
-                print("{} is fucked up".format(fname))
-                continue
             (curr_var, curr_window_size, curr_reads, curr_channels) = f["data"].shape
             n_var += curr_var
 
@@ -40,8 +37,6 @@ def merge_samples(samples, ofile):
             if window_size is not None:
                 assert(window_size == curr_window_size)
             (window_size, reads, channels)  = (curr_window_size, curr_reads, curr_channels)
-
-    logging.info("There are {} variants".format(n_var))
 
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
@@ -62,8 +57,9 @@ def merge_samples(samples, ofile):
                 labels_dset[curr: curr + curr_var] = f["labels"]
                 curr += curr_var
 
+
 def par_merge(pair):
-    (fnames, i) = pair
+    (i, fnames) = pair
     merge_samples(fnames, "{}/{}.hdf5".format(out_dir, i))
     logging.info("Done merging {}".format(fnames))
     return None
@@ -81,11 +77,12 @@ def main():
 
     utils.set_logging()
 
-    logging.info("Will merge {} files".format(len(fnames)))
-
     fnames = glob.glob("{}/*.hdf5".format(in_dir))
     paired_fnames = pair_files(fnames)
 
+    logging.info("Will merge {} files".format(len(fnames)))
+
+    conf = utils.get_json(sys.argv[1])
     n_threads = conf.get("n_threads", 1)
 
     if n_threads > 1:
