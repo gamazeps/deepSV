@@ -11,7 +11,8 @@ def get_json(fname):
     return metadata
 
 
-def set_logging():
+def set_logging(fname=None):
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s -- %(message)s',
+                        filename=fname,
+                        format='%(asctime)s %(levelname)s -- %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S')

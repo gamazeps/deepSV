@@ -103,11 +103,15 @@ def main():
     # can de passed to multi_processing
     global global_conf
 
-    if len(sys.argv) != 3:
-        print("Please provide 2 arguments: configuration.json whitelist")
+    if len(sys.argv) <= 3 or len(sys.argv) > 4:
+        print("Please provide at least 2 arguments: configuration.json whitelist [log]")
         sys.exit(1)
 
-    utils.set_logging()
+    if len(sys.argv) == 4:
+        print("logging to {}".format(sys.argv[3]))
+        utils.set_logging(fname=sys.argv[3])
+    else:
+        utils.set_logging()
 
     conf_fname = sys.argv[1]
     whitelist_fname = sys.argv[2]
