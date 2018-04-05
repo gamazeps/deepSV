@@ -35,6 +35,8 @@ class RefSeq(object):
                     curr = RefRead(chrom, int(beg), int(end))
                 else:
                     curr.append_seq(l.strip())
+            if curr is None:
+                print("fuck {}".format(fname))
             assert(len(curr.seq) == (curr.end - curr.pos))
             res.append(curr)
         assert(len(res) == 2)

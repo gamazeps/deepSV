@@ -14,7 +14,7 @@ use vcf_record::{InfoField, VCFRecord};
 use config::Config;
 
 pub fn generate_reads(record: VCFRecord, config: &Config) {
-    let mut fnames : Vec<_> = glob(&format!("{}/{}/*.bam", config.data_dir.clone(), record.sample()))
+    let mut fnames : Vec<_> = glob(&format!("{}/{}/alignment/*.bam", config.data_dir.clone(), record.sample()))
         .expect("Failed to read glob pattern")
         .collect();
     if fnames.len() == 0 {

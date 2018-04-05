@@ -2971,7 +2971,6 @@ def generate_targets(conf):
         if conf["generate_fetch_command"]:
             save_dir = conf["save_dir"]
             commands = list()
-            commands.append("set -ex\n")
             for target in targets:
                 commands.append(
                     "wget --recursive --continue --accept='*.mapped.*.bam' "
