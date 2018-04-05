@@ -7,8 +7,6 @@ import os
 
 import utils
 
-out_dir = None
-
 def pair_files(fnames):
     """
     Helper function to have the samples 2 by 2
@@ -62,7 +60,7 @@ def merge_samples(fnames, ofile):
 
 
 def par_merge(pair):
-    (i, fnames) = pair
+    (out_dir, (i, fnames)) = pair
     new_name = "{}/{}.hdf5".format(out_dir, i)
     merge_samples(fnames, new_name)
     logging.info("Done merging {}".format(fnames))
@@ -70,8 +68,6 @@ def par_merge(pair):
 
 
 def main():
-    global out_dir
-
     if len(sys.argv) != 2:
         print("Please provide 1 arguments: conf.json")
         sys.exit(1)
@@ -97,13 +93,14 @@ def main():
             os.makedirs(out_dir)
 
         paired_fnames = pair_files(fnames)
+        out_dirs = [out_dir] * len(paired_fnames)
 
         logging.info("Will merge {} files".format(len(fnames)))
 
         if n_threads > 1:
-            fnames = p.map(par_merge, enumerate(paired_fnames))
+            fnames = p.map(par_merge, zip(out_dirs, enumerate(paired_fnames)))
         else:
-            fnames = [par_merge(pair) for pair in enumerate(paired_fnames)]
+            fnames = [par_merge(pair) for pair in zip(out_dirs, enumerate(paired_fnames))]
 
         logging.info("Finished merge phase {}".format(step))
         step += 1
