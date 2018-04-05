@@ -7,6 +7,8 @@ import os
 
 import utils
 
+out_dir = None
+
 def pair_files(fnames):
     """
     Helper function to have the samples 2 by 2
