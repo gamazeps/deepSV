@@ -78,16 +78,16 @@ def main():
 
     in_dir = conf["in_dir"]
     root_dir = conf["root_dir"]
+    n_threads = conf.get("n_threads", 1)
+    if n_threads > 1:
+        p = Pool(n_threads)
 
-    step = 0
 
     utils.set_logging()
 
     fnames = glob.glob("{}/*.hdf5".format(in_dir))
 
-    if n_threads > 1:
-        p = Pool(n_threads)
-
+    step = 0
     while len(fnames) > 1:
         logging.info("Starting merge phase {}".format(step))
         out_dir = "{}/iter_{}".format(root_dir, step)
@@ -97,8 +97,6 @@ def main():
         paired_fnames = pair_files(fnames)
 
         logging.info("Will merge {} files".format(len(fnames)))
-
-        n_threads = conf.get("n_threads", 1)
 
         if n_threads > 1:
             fnames = p.map(par_merge, enumerate(paired_fnames))
