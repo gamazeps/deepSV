@@ -1,3 +1,5 @@
 {
-    "n_threads": 32
+    "n_threads": 32,
+    "in_dir": "/mnt/disk3/felix/tensors/lzf",
+    "root_dir": "/mnt/disk3/felix/tensors"
 }

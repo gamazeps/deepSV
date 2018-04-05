@@ -70,12 +70,14 @@ def par_merge(pair):
 def main():
     global out_dir
 
-    if len(sys.argv) != 4:
-        print("Please provide 3 arguments: conf.json in_dir root_dir")
+    if len(sys.argv) != 2:
+        print("Please provide 1 arguments: conf.json")
         sys.exit(1)
 
-    in_dir = sys.argv[2]
-    root_dir = sys.argv[3]
+    conf = utils.get_json(sys.argv[1])
+
+    in_dir = conf["in_dir"]
+    root_dir = conf["root_dir"]
 
     step = 0
 
@@ -96,7 +98,6 @@ def main():
 
         logging.info("Will merge {} files".format(len(fnames)))
 
-        conf = utils.get_json(sys.argv[1])
         n_threads = conf.get("n_threads", 1)
 
         if n_threads > 1:
