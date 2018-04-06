@@ -4,6 +4,7 @@ Let's write this shit as if it were flume !
 import collections
 import json
 import matplotlib.pyplot as plt
+import os
 
 import pysam
 
@@ -21,6 +22,8 @@ def plot_histogram(records):
 
 
 def record_dict(record):
+    # Needed because record.info is a VariantRecordInfo object which
+    # overrides its __getitem__ method in order to act as a dict.
     return {
        "chrom": record.chrom,
        "start": record.start,
@@ -31,15 +34,13 @@ def record_dict(record):
     }
 
 
-def extract_reads(records):
-    fname = "../data/alignment/NA12878.mapped.ILLUMINA.bwa.CEU.low_coverage.20121211.bam"
-    samfile = pysam.AlignmentFile(fname, 'rb')
+def extract_reads(records, bam_path, conf):
+    samfile = pysam.AlignmentFile(bam_path, 'rb')
     for record in records[:1]:
-        variant_size = record.stop - record.stop
-        supporting_reads = pysam.AlignmentFile("{}.bam".format(record.id),
-                                               "wb",
-                                               template=samfile)
+        bam_fname = os.path.join(conf["supporting_reads_path"], "{}.bam".format(record.id))
+        supporting_reads = pysam.AlignmentFile(bam_fname, "wb", template=samfile)
 
+        variant_size = record.stop - record.stop
         # Taking two halves, but probably not needed at that step, could be used only at
         # the tensor building phase.
         # Could even build the tensor there...
@@ -56,22 +57,25 @@ def extract_reads(records):
                 supporting_reads.write(read)
         supporting_reads.close()
 
-        fafile = pysam.FastaFile("human_g1k_v37.fasta")
-        with open("{}.fa".format(record.id), 'w') as f:
+        ref_fa = pysam.FastaFile(conf["reference_path"])
+
+        fa_fname = os.path.join(conf["supporting_reads_path"], "{}.fa".format(record.id))
+        with open(fa_fname, 'w') as f:
             f.write("# {} {} {}\n".format(record.chrom,
                                           record.start - window,
                                           record.start + window))
-            f.write("{}\n".format(str(fafile.fetch(record.chrom,
+            f.write("{}\n".format(str(ref_fa.fetch(record.chrom,
                                                    record.start - window,
                                                    record.start + window))))
             f.write("# {} {} {}\n".format(record.chrom,
                                           record.stop - window,
                                           record.stop + window))
-            f.write("{}\n".format(str(fafile.fetch(record.chrom,
+            f.write("{}\n".format(str(ref_fa.fetch(record.chrom,
                                                    record.stop - window,
                                                    record.stop + window))))
 
-        with open("{}.json".format(record.id), 'w') as f:
+        json_fname = os.path.join(conf["supporting_reads_path"], "{}.json".format(record.id))
+        with open(json_fname, 'w') as f:
             f.write(json.dumps(record_dict(record)))
 
 
@@ -86,9 +90,15 @@ def main():
             continue
         per_sample[record.info["SAMPLE"]].append(record)
 
+    conf = {
+        "supporting_reads_path": '.',
+        "reference_path": 'human_g1k_v37.fasta'
+    }
+
+
     na12878 = per_sample["NA12878"]
-    print(len(na12878))
-    extract_reads(na12878)
+    na12878_bam = '../data/alignment/NA12878.mapped.ILLUMINA.bwa.CEU.low_coverage.20121211.bam'
+    extract_reads(na12878, na12878_bam, conf)
 
 if __name__ == "__main__":
     main()
