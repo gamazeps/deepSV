@@ -1,13 +1,14 @@
 """
 Let's write this shit as if it were flume !
 """
-
-import pysam
 import collections
+import json
 import matplotlib.pyplot as plt
 
+import pysam
+
 median_insert_size = 400
-median_read_size = 100
+median_read_size = 101
 window = median_insert_size + median_read_size
 
 def plot_histogram(records):
@@ -19,17 +20,30 @@ def plot_histogram(records):
     plt.show()
 
 
+def record_dict(record):
+    return {
+       "chrom": record.chrom,
+       "start": record.start,
+       "stop": record.stop,
+       "id": record.id,
+       "alts": record.alts,
+       "info": dict(record.info.items())
+    }
+
+
 def extract_reads(records):
     fname = "../data/alignment/NA12878.mapped.ILLUMINA.bwa.CEU.low_coverage.20121211.bam"
     samfile = pysam.AlignmentFile(fname, 'rb')
     for record in records[:1]:
         variant_size = record.stop - record.stop
-        supporting_reads = pysam.AlignmentFile("allpaired.bam", "wb", template=samfile)
+        supporting_reads = pysam.AlignmentFile("{}.bam".format(record.id),
+                                               "wb",
+                                               template=samfile)
 
         # Taking two halves, but probably not needed at that step, could be used only at
         # the tensor building phase.
-
         # Could even build the tensor there...
+        # NOTE: the sam file was poorly generated once, but I cannot reproduce.
         if variant_size > (2 * window + median_read_size + 20):
             l_reads = samfile.fetch(record.chrom, record.start - window, record.start + window)
             r_reads = samfile.fetch(record.chrom, record.stop - window, record.stop + window)
@@ -43,7 +57,7 @@ def extract_reads(records):
         supporting_reads.close()
 
         fafile = pysam.FastaFile("human_g1k_v37.fasta")
-        with open("dummy.fa", 'w') as f:
+        with open("{}.fa".format(record.id), 'w') as f:
             f.write("# {} {} {}\n".format(record.chrom,
                                           record.start - window,
                                           record.start + window))
@@ -56,6 +70,9 @@ def extract_reads(records):
             f.write("{}\n".format(str(fafile.fetch(record.chrom,
                                                    record.stop - window,
                                                    record.stop + window))))
+
+        with open("{}.json".format(record.id), 'w') as f:
+            f.write(json.dumps(record_dict(record)))
 
 
 def main():
