@@ -42,17 +42,20 @@ def extract_reads(records):
                 supporting_reads.write(read)
         supporting_reads.close()
 
-        #TODO do the fasta
-        """
-        fafile = pysam.FastaFile("toto")
+        fafile = pysam.FastaFile("human_g1k_v37.fasta")
         with open("dummy.fa", 'w') as f:
-            f.write(str(fafile.fetch(record.chrom,
-                                     record.start - window,
-                                     record.start + window)))
-            f.write(str(fafile.fetch(record.chrom,
-                                     record.start - window,
-                                     record.start + window)))
-        """
+            f.write("# {} {} {}\n".format(record.chrom,
+                                          record.start - window,
+                                          record.start + window))
+            f.write("{}\n".format(str(fafile.fetch(record.chrom,
+                                                   record.start - window,
+                                                   record.start + window))))
+            f.write("# {} {} {}\n".format(record.chrom,
+                                          record.stop - window,
+                                          record.stop + window))
+            f.write("{}\n".format(str(fafile.fetch(record.chrom,
+                                                   record.stop - window,
+                                                   record.stop + window))))
 
 
 def main():
