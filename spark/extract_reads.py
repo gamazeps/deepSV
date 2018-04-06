@@ -36,7 +36,7 @@ def record_dict(record):
 
 def extract_reads(records, bam_path, conf):
     samfile = pysam.AlignmentFile(bam_path, 'rb')
-    for record in records[:1]:
+    for record in records[:10]:
         bam_fname = os.path.join(conf["supporting_reads_path"], "{}.bam".format(record.id))
         supporting_reads = pysam.AlignmentFile(bam_fname, "wb", template=samfile)
 
@@ -80,8 +80,8 @@ def extract_reads(records, bam_path, conf):
 
 
 def main():
-    fname = "estd219.GRCh37.variant_call.vcf.gz"
-    vcf = pysam.VariantFile(fname, 'rb')
+    vcf_fname = "data/estd219.GRCh37.variant_call.vcf.gz"
+    vcf = pysam.VariantFile(vcf_fname, 'rb')
 
     per_sample = collections.defaultdict(list)
     for record in vcf.fetch('1'):
@@ -91,8 +91,8 @@ def main():
         per_sample[record.info["SAMPLE"]].append(record)
 
     conf = {
-        "supporting_reads_path": '.',
-        "reference_path": 'human_g1k_v37.fasta'
+        "supporting_reads_path": 'out',
+        "reference_path": 'data/human_g1k_v37.fasta'
     }
 
 
