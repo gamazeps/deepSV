@@ -5,6 +5,7 @@ import collections
 import json
 import glob
 import logging
+import multiprocessing
 import os
 import sys
 
@@ -17,34 +18,36 @@ median_read_size = 101
 window = median_insert_size + median_read_size
 
 
-def record_dict(record):
+class VariantRecordWrapper(object):
     # Needed because record.info is a VariantRecordInfo object which
     # overrides its __getitem__ method in order to act as a dict.
     # Since the VariantRecordInfo class is not serializable, we need to do it ourselve.
-    return {
-       "chrom": record.chrom,
-       "start": record.start,
-       "stop": record.stop,
-       "id": record.id,
-       "alts": record.alts,
-       "info": dict(record.info.items())
-    }
+    def __init__(self, record):
+        self.chrom = record.chrom
+        self.start = record.start
+        self.stop = record.stop
+        self.id = record.id
+        self.alts = record.alts
+        self.info = dict(record.info.items())
+
+    def to_json(self):
+        return {
+            'chrom': self.chrom,
+            'start': self.start,
+            'stop': self.stop,
+            'id': self.id,
+            'alts': self.alts,
+            'info': self.info
+        }
 
 
-def extract_reads(records, sample, conf, bam_path=None):
-    """
-    The `bam_path` argument is here as a hack to allow me to work locally
-    """
-    if bam_path is None:
-        bam_dir = os.path.join(conf["alignments"], sample, "alignment")
-        if not os.path.exists(bam_dir):
-            logging.info("No reads for {}".format(sample))
-            return
-        fnames = glob.glob(os.path.join(bam_dir, "*.bam"))
-        assert(len(fnames) == 1)
-        bamfile = pysam.AlignmentFile(fnames[0], 'rb')
-    else:
-        bamfile = pysam.AlignmentFile(bam_path, 'rb')
+def extract_reads(sample, records, conf):
+    bam_dir = os.path.join(conf["alignments"], sample, "alignment")
+    if not os.path.exists(bam_dir):
+        return
+    fnames = glob.glob(os.path.join(bam_dir, "*.bam"))
+    assert(len(fnames) == 1)
+    bamfile = pysam.AlignmentFile(fnames[0], 'rb')
 
     ref_fa = pysam.FastaFile(conf["reference_path"])
     out_dir = os.path.join(conf['supporting_reads_path'], sample)
@@ -90,8 +93,9 @@ def extract_reads(records, sample, conf, bam_path=None):
 
         json_fname = os.path.join(out_dir, "{}.json".format(record.id))
         with open(json_fname, 'w') as f:
-            f.write(json.dumps(record_dict(record)))
+            f.write(json.dumps(record.to_json()))
     logging.info("Finished extracting reads for {}".format(sample))
+    return None
 
 
 def main():
@@ -112,12 +116,19 @@ def main():
         # We want to remove variants with uncertain locations
         if "CIEND" in record.info.keys() or "CIPOS" in record.info.keys():
             continue
-        per_sample[record.info["SAMPLE"]].append(record)
+        per_sample[record.info["SAMPLE"]].append(VariantRecordWrapper(record))
     logging.info("Finished parsing the VCF")
 
-    #na12878 = per_sample["NA12878"]
-    for (sample, records) in per_sample.items():
-        extract_reads(records, sample, conf)
+    n_threads = conf.get("n_threads", 1)
+    logging.info("Starting to generate the reads on {} threads".format(n_threads))
+
+    if n_threads > 1:
+        p = multiprocessing.Pool(n_threads)
+        p.starmap(extract_reads,
+                  ((sample, records, conf) for (sample, records) in per_sample.items()))
+    else:
+        for (sample, records) in per_sample.items():
+            extract_reads(sample, records, conf)
 
     logging.info("Finished extracting the reads")
 
