@@ -1,0 +1,6 @@
+{
+    "alignments": "../data/alignment",
+    "supporting_reads_path": "out",
+    "reference_path": "data/human_g1k_v37.fasta",
+    "vcf_path" : "data/estd219.GRCh37.variant_call.vcf.gz"
+}
