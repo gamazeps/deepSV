@@ -112,7 +112,7 @@ def main():
     vcf = pysam.VariantFile(conf['vcf_path'], 'rb')
 
     per_sample = collections.defaultdict(list)
-    for record in vcf.fetch('1'):
+    for record in vcf.fetch():
         # We want to remove variants with uncertain locations
         if "CIEND" in record.info.keys() or "CIPOS" in record.info.keys():
             continue
