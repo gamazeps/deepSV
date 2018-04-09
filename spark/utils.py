@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 
 def get_json(fname):
@@ -12,7 +13,8 @@ def get_json(fname):
 
 
 def set_logging(fname=None):
+    hostname = os.uname().nodename
     logging.basicConfig(level=logging.INFO,
                         filename=fname,
-                        format='%(asctime)s %(levelname)s -- %(message)s',
+                        format='%(asctime)s %(levelname)-8s {} -- %(message)s'.format(hostname),
                         datefmt='%m/%d/%Y %H:%M:%S')
