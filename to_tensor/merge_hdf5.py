@@ -44,9 +44,9 @@ def merge_samples(fnames, ofile):
 
     with h5py.File(ofile, "w") as root_f:
         data_dset = root_f.create_dataset("data", shape=(n_var, window_size, reads, channels),
-                                          dtype="int64", compression="lzf")
+                                          dtype="u1", compression="lzf")
         labels_dset = root_f.create_dataset("labels", shape=(n_var,),
-                                            dtype="i8", compression="lzf")
+                                            dtype="u1", compression="lzf")
         metadata_dset = root_f.create_dataset("metadata", shape=(n_var,),
                                               dtype=dt, compression="lzf")
         curr = 0
@@ -61,15 +61,15 @@ def merge_samples(fnames, ofile):
 
 def par_merge(pair):
     (out_dir, (i, fnames)) = pair
-    new_name = "{}/{}.hdf5".format(out_dir, i)
+    new_name = "{}/{}.h5".format(out_dir, i)
     merge_samples(fnames, new_name)
     logging.info("Done merging {}".format(fnames))
     return new_name
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Please provide 1 arguments: conf.json")
+    if len(sys.argv) != 3:
+        print("Please provide 2 arguments: conf.json log")
         sys.exit(1)
 
     conf = utils.get_json(sys.argv[1])
@@ -81,7 +81,7 @@ def main():
         p = Pool(n_threads)
 
 
-    utils.set_logging()
+    utils.set_logging(sys.argv[2])
 
     fnames = glob.glob("{}/*.hdf5".format(in_dir))
 
