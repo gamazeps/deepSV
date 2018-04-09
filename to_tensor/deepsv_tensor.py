@@ -84,8 +84,8 @@ class DeepSVTensor(object):
     def __init__(self, encoder, metadata, pairs_capacity):
         self.encoder = encoder
         self.metadata = metadata
-        self.begin = self.metadata["pos"] - (BREAKPOINT_WINDOW // 2)
-        self.end = self.metadata["info"]["END"]["END"]
+        self.begin = self.metadata["start"] - (BREAKPOINT_WINDOW // 2)
+        self.end = self.metadata["stop"]
         self.size = self.end - self.begin
         self.pairs_capacity = pairs_capacity
         self.tensor = np.full((pairs_capacity, FULL_WINDOW, encoder.n_channels), 0)
@@ -215,4 +215,4 @@ class DeepSVTensor(object):
             "INS": 4,
             "CNV": 5
         }
-        return label_to_int[self.metadata["info"]["SVTYPE"]["SVTYPE"]]
+        return label_to_int[self.metadata["info"]["SVTYPE"]]

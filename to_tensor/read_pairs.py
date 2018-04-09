@@ -1,18 +1,14 @@
 import numpy as np
+import pysam
 
 class RefRead(object):
     #TODO(gamazeps) make a superclass for SAM and FASTA seq like that
-    def __init__(self, chrom, begin, end, seq=""):
+    def __init__(self, chrom, start, stop, seq):
         self.chrom = chrom
-        self.pos = begin - 1 # FIXME(gamazeps): this is an ugly hack
-        self.end = end
+        self.start = start
+        self.stop = stop
         self.seq = seq
-
-    def align(self):
-        return [c for c in self.seq]
-
-    def append_seq(self, seq):
-        self.seq += seq
+        assert(len(self.seq) == (self.stop - self.start))
 
 
 class RefSeq(object):
@@ -23,87 +19,57 @@ class RefSeq(object):
         file.
         """
         with open(fname, "r") as f:
-            res = []
-            curr = None
-            for l in f:
-                if l[0] == ">":
-                    if curr is not None:
-                        res.append(curr)
-                    parts = l[1:].strip().split(":")
-                    chrom = parts[0]
-                    (beg, end) = parts[1].split("-")
-                    curr = RefRead(chrom, int(beg), int(end))
-                else:
-                    curr.append_seq(l.strip())
-            if curr is None:
-                print("fuck {}".format(fname))
-            assert(len(curr.seq) == (curr.end - curr.pos))
-            res.append(curr)
-        assert(len(res) == 2)
-        self.first = res[0]
-        self.second = res[1]
+            lines = [l.strip() for l in f.readlines()]
+            assert(len(lines) == 4)
+
+            meta = lines[0].split(' ')
+            assert(len(meta) == 4)
+            seq = lines[1]
+            self.first = RefRead(meta[1], int(meta[2]), int(meta[3]), seq=seq)
+
+            meta = lines[2].split(' ')
+            assert(len(meta) == 4)
+            seq = lines[3]
+            self.second = RefRead(meta[1], int(meta[2]), int(meta[3]), seq=seq)
 
     def leftmost(self):
         return self.first.pos
+
+    def align(self, read):
+        return [c for c in read.seq]
 
     def extract_range(self, begin, end, dummy=' '):
         assert(begin < end)
         res = np.full((end - begin), dummy)
         for read in [self.first, self.second]:
             if read:
-                if read.end < begin:
+                if read.stop < begin:
                     continue
-                elif read.pos > end:
+                elif read.start > end:
                     continue
-                elif read.end == begin:
-                    res[0] = read.align()[-1]
-                elif read.pos == end:
-                    res[-1] = read.align()[0]
-                elif read.pos >= begin and read.end <= end:
-                    res[read.pos - begin: read.end - begin] = read.align()
-                    assert(np.array_equal(res[read.pos - begin: read.end - begin],
-                                          read.align()))
-                elif read.pos < begin and read.end < end:
-                    res[: read.end - begin] = read.align()[-(read.end - begin):]
-                    assert(np.array_equal(res[:read.end - begin],
-                                          read.align()[-(read.end - begin):]))
-                elif read.pos > begin and read.end > end:
-                    res[read.pos - begin:] = read.align()[:-(read.end - end)]
-                    assert(np.array_equal(res[read.pos - begin:],
-                                          read.align()[:-(read.end - end)]))
-                elif read.pos < begin and read.end > end:
-                    res[:] = read.align()[begin - read.pos: -(read.end - end)]
+                elif read.stop == begin:
+                    res[0] = self.align(read)[-1]
+                elif read.start == end:
+                    res[-1] = self.align(read)[0]
+                elif read.start >= begin and read.stop <= end:
+                    res[read.start - begin: read.stop - begin] = self.align(read)
+                    assert(np.array_equal(res[read.start - begin: read.stop - begin],
+                                          self.align(read)))
+                elif read.start < begin and read.stop < end:
+                    res[: read.stop - begin] = self.align(read)[-(read.stop - begin):]
+                    assert(np.array_equal(res[:read.stop - begin],
+                                          self.align(read)[-(read.stop - begin):]))
+                elif read.start > begin and read.stop > end:
+                    res[read.start - begin:] = self.align(read)[:-(read.stop - end)]
+                    assert(np.array_equal(res[read.start - begin:],
+                                          self.align(read)[:-(read.stop - end)]))
+                elif read.start < begin and read.stop > end:
+                    res[:] = self.align(read)[begin - read.start: -(read.stop - end)]
                     assert(np.array_equal(res[:],
-                                          read.align()[begin - read.pos: -(read.end - end)]))
+                                          self.align(read)[begin - read.start: -(read.stop - end)]))
                 else:
                     assert False, "unreachable"
         return res
-
-
-class SamRead(object):
-    def __init__(self, sam_record):
-        """
-        TODO(gamazeps): this is awfull
-        """
-        tokens = sam_record.split('\t')
-        self.qname = tokens[0]
-        self.flag = int(tokens[1])
-        self.rname = tokens[2]
-        self.pos = int(tokens[3])
-        self.mapq = tokens[4]
-        self.cigar = tokens[5]
-        self.rnext = tokens[6]
-        self.pnext = tokens[7]
-        self.tlen = tokens[8]
-        self.seq = tokens[9]
-        self.qual = tokens[10]
-
-        self.size = len(self.seq)
-        self.end = self.pos + self.size
-
-    def align(self):
-        # TODO(gamazeps): do the CIGAR stuff here.
-        return [c for c in self.seq]
 
 
 class ReadPair(object):
@@ -121,12 +87,10 @@ class ReadPair(object):
             assert(False)
 
     def add_read(self, read):
-        if read.flag & 64:
-            # first read of the pair
+        if read.is_read1:
             assert(self.first is None)
             self.first = read
-        elif read.flag & 128:
-            # second red in the readpair
+        elif read.is_read2:
             assert(self.second is None)
             self.second = read
         else:
@@ -135,35 +99,41 @@ class ReadPair(object):
     def paired(self):
         return not (self.first is None or self.second is None)
 
+    def align(self, read):
+        return [c for c in read.seq]
+
     def extract_range(self, begin, end, dummy=' '):
         assert(begin < end)
         res = np.full((end - begin), dummy)
         for read in [self.first, self.second]:
             if read:
-                if read.end < begin:
+                # FIXME(gamazeps): we need to use the CIGAR stuff
+                read_start = read.reference_start
+                read_stop = read_start + len(read.seq)
+                if read_stop < begin:
                     continue
-                elif read.pos > end:
+                elif read_start > end:
                     continue
-                elif read.end == begin:
-                    res[0] = read.align()[-1]
-                elif read.pos == end:
-                    res[-1] = read.align()[0]
-                elif read.pos >= begin and read.end <= end:
-                    res[read.pos - begin: read.end - begin] = read.align()
-                    assert(np.array_equal(res[read.pos - begin: read.end - begin],
-                                          read.align()))
-                elif read.pos < begin and read.end < end:
-                    res[: read.end - begin] = read.align()[-(read.end - begin):]
-                    assert(np.array_equal(res[:read.end - begin],
-                                          read.align()[-(read.end - begin):]))
-                elif read.pos > begin and read.end > end:
-                    res[read.pos - begin:] = read.align()[:-(read.end - end)]
-                    assert(np.array_equal(res[read.pos - begin:],
-                                          read.align()[:-(read.end - end)]))
-                elif read.pos < begin and read.end > end:
-                    res[:] = read.align()[begin - read.pos: -(read.end - end)]
+                elif read_stop == begin:
+                    res[0] = self.align(read)[-1]
+                elif read_start == end:
+                    res[-1] = self.align(read)[0]
+                elif read_start >= begin and read_stop <= end:
+                    res[read_start - begin: read_stop - begin] = self.align(read)
+                    assert(np.array_equal(res[read_start - begin: read_stop - begin],
+                                          self.align(read)))
+                elif read_start < begin and read_stop < end:
+                    res[: read_stop - begin] = self.align(read)[-(read_stop - begin):]
+                    assert(np.array_equal(res[:read_stop - begin],
+                                          self.align(read)[-(read_stop - begin):]))
+                elif read_start > begin and read_stop > end:
+                    res[read_start - begin:] = self.align(read)[:-(read_stop - end)]
+                    assert(np.array_equal(res[read_start - begin:],
+                                          self.align(read)[:-(read_stop - end)]))
+                elif read_start < begin and read_stop > end:
+                    res[:] = self.align(read)[begin - read_start: -(read_stop - end)]
                     assert(np.array_equal(res[:],
-                                          read.align()[begin - read.pos: -(read.end - end)]))
+                                          self.align(read)[begin - read_start: -(read_stop - end)]))
                 else:
                     assert False, "unreachable"
         return res
