@@ -1,5 +1,5 @@
 {
-    "reads_path": "../data/supporting_reads",
+    "reads_path": "../spark/out",
     "tensors_path": "../data/tensors",
     "n_threads": 1
 }
