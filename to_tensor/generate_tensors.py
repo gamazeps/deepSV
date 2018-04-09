@@ -38,22 +38,22 @@ def build_tensor(basename, reads_limit=150):
 
 
 def build_read_pairs(fname, sample_limit):
-    bamfile = pysam.AlignmentFile(fname, 'rb')
-    records = dict()
-    for read in bamfile.fetch(until_eof=True):
-        if not read.is_paired:
-            continue
-        if read.qname not in records:
-            records[read.qname] = ReadPair(read.qname)
-        records[read.qname].add_read(read)
+    with pysam.AlignmentFile(fname, 'rb') as bamfile:
+        records = dict()
+        for read in bamfile.fetch(until_eof=True):
+            if not read.is_paired:
+                continue
+            if read.qname not in records:
+                records[read.qname] = ReadPair(read.qname)
+            records[read.qname].add_read(read)
 
-    # Here we sample up to `sample_limit` reads at random
-    records_list = [v for (_, v) in records.iteritems()]
-    n_records = len(records_list)
-    sampled_indices = sorted(random.sample(range(n_records), min(n_records, sample_limit)))
-    sampled_records_list = [records_list[i] for i in sampled_indices]
+        # Here we sample up to `sample_limit` reads at random
+        records_list = [v for (_, v) in records.iteritems()]
+        n_records = len(records_list)
+        sampled_indices = sorted(random.sample(range(n_records), min(n_records, sample_limit)))
+        sampled_records_list = [records_list[i] for i in sampled_indices]
 
-    return sorted(sampled_records_list, key=lambda rp: rp.leftmost())
+        return sorted(sampled_records_list, key=lambda rp: rp.leftmost())
 
 
 def get_whitelist(fname):
@@ -75,28 +75,34 @@ def process_sample(conf, sample):
     # The tensors could be written one by one, however we have enough memory on the cluster
     # to do that with 32 threads in parrallel (750GB used at the max).
     # It could easily be optimized by writing the tensors one by one to hdf5.
-    tensors = [process_variant(fname) for fname in names]
-    logging.info("done processing {}".format(sample))
+    logging.info("Starting processing {}".format(sample))
 
-    if len(tensors) == 0:
+    if len(names) == 0:
         return
 
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
 
-    with h5py.File("{}/{}.hdf5".format(conf["tensors_path"], sample), "w") as f:
+    with h5py.File("{}/{}.h5".format(conf["tensors_path"], sample), "w") as f:
         data_dset= f.create_dataset("data",
-                                     data=[t.tensor for t in tensors],
+                                     shape=(len(names), 150, 2014, 8),
                                      compression="lzf",
                                      dtype="u1")
         labels_dset= f.create_dataset("labels",
-                                      data=[t.label() for t in tensors],
+                                      shape=(len(names),),
                                       compression="lzf",
                                       dtype="u1")
         metadata_dset= f.create_dataset("metadata",
-                                        data=[json.dumps(t.metadata) for t in tensors],
+                                        shape=(len(names),),
                                         compression="lzf",
                                         dtype=dt)
+        for i, fname in enumerate(names):
+            logging.info(i)
+            tensor = process_variant(fname)
+            data_dset[i] = tensor.tensor
+            labels_dset[i] = tensor.label()
+            metadata_dset[i] = json.dumps(tensor.metadata)
+
     logging.info("done saving {} to hdf5".format(sample))
 
 
