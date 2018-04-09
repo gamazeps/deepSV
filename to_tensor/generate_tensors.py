@@ -97,7 +97,6 @@ def process_sample(conf, sample):
                                         compression="lzf",
                                         dtype=dt)
         for i, fname in enumerate(names):
-            logging.info(i)
             tensor = process_variant(fname)
             data_dset[i] = tensor.tensor
             labels_dset[i] = tensor.label()
