@@ -84,14 +84,19 @@ def process_sample(conf, sample):
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
 
-    raw_data = [t.tensor for t in tensors]
-    labels = [t.label() for t in tensors]
-    metadata = [json.dumps(t.metadata) for t in tensors]
-
     with h5py.File("{}/{}.hdf5".format(conf["tensors_path"], sample), "w") as f:
-        data_dset= f.create_dataset("data", data=raw_data, compression="lzf", dtype="u1")
-        labels_dset= f.create_dataset("labels", data=labels, compression="lzf", dtype="u1")
-        metadata_dset= f.create_dataset("metadata", data=metadata, compression="lzf", dtype=dt)
+        data_dset= f.create_dataset("data",
+                                     data=[t.tensor for t in tensors],
+                                     compression="lzf",
+                                     dtype="u1")
+        labels_dset= f.create_dataset("labels",
+                                      data=[t.label() for t in tensors],
+                                      compression="lzf",
+                                      dtype="u1")
+        metadata_dset= f.create_dataset("metadata",
+                                        data=[json.dumps(t.metadata) for t in tensors],
+                                        compression="lzf",
+                                        dtype=dt)
     logging.info("done saving {} to hdf5".format(sample))
 
 
