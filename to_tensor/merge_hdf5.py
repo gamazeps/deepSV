@@ -83,7 +83,7 @@ def main():
 
     utils.set_logging(sys.argv[2])
 
-    fnames = glob.glob("{}/*.hdf5".format(in_dir))
+    fnames = glob.glob("{}/*.h5".format(in_dir))
 
     step = 0
     while len(fnames) > 1:
