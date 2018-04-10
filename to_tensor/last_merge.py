@@ -40,8 +40,8 @@ def merge_samples(fnames, ofile):
             logging.info("merging {}".format(fname))
             with h5py.File(fname, "r") as f:
                 (curr_var,) = f["labels"].shape
-                step = 20000
-                for i in range(0, curr_var, step)
+                step = 200000
+                for i in range(0, curr_var, step):
                     local_end = min(curr_var, i + step)
                     file_end = min(curr + curr_var, curr + i + step)
                     data_dset[curr + i: file_end] = f["data"][i: local_end]
@@ -66,11 +66,11 @@ def main():
 
     utils.set_logging(sys.argv[2])
 
-    fnames = glob.glob(os.join(in_dir, "*.h5"))
+    fnames = glob.glob(os.path.join(in_dir, "*.h5"))
 
-    logging.info("Starting merging".format(step))
-    merge_samples(fnames, os.join(out_dir, 'variants.h5'))
-    logging.info("Finished merging".format(step))
+    logging.info("Starting merging")
+    merge_samples(fnames, os.path.join(out_dir, 'variants.h5'))
+    logging.info("Finished merging")
 
 if __name__ == "__main__":
     main()
