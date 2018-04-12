@@ -7,6 +7,7 @@ import multiprocessing
 import pysam
 import random
 import sys
+import time
 import os
 
 from read_pairs import ReadPair, RefSeq
@@ -80,6 +81,8 @@ def process_sample(conf, sample):
     if len(names) == 0:
         return
 
+    times = np.zeros((len(fnames),), dtype='f')
+
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
 
@@ -97,12 +100,15 @@ def process_sample(conf, sample):
                                         compression="lzf",
                                         dtype=dt)
         for i, fname in enumerate(names):
+            start = time.time()
             tensor = process_variant(fname)
+            times[i] = time.time() - start
             data_dset[i] = tensor.tensor
             labels_dset[i] = tensor.label()
             metadata_dset[i] = json.dumps(tensor.metadata)
 
     logging.info("done saving {} to hdf5".format(sample))
+    logging.info('avg time: {} per tensor', times.mean())
 
 
 def par_process_sample(sample):
