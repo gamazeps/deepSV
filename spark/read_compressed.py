@@ -14,7 +14,7 @@ def extract_batch(fname, batchsize, iters):
             r = random.randint(0, samples - batchsize)
             _dummy = f['data'][r: r+batchsize]
     stop = time.time()
-    logging.info('{} tensors, {} batchsize -- avg: {}, avg_per_tensor {}'
+    logging.info('{:8d} tensors, {:3d} batchsize -- avg: {:2.3f}, avg_per_tensor {:1.4f}'
                  .format(samples,
                          batchsize,
                          (stop - start) / iters,
@@ -27,8 +27,9 @@ def grid_search(conf):
     batches = [16, 32, 64, 128, 256]
 
     for fname in fnames:
+        logging.info(fname)
         for batch in batches:
-            extract_batch(fname, batch, 3)
+            extract_batch(fname, batch, 10)
 
 
 def main():
