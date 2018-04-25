@@ -9,6 +9,7 @@ import random
 import sys
 import time
 import os
+import numpy as np
 
 from read_pairs import ReadPair, RefSeq
 import utils
@@ -81,7 +82,7 @@ def process_sample(conf, sample):
     if len(names) == 0:
         return
 
-    times = np.zeros((len(fnames),), dtype='f')
+    times = np.zeros((len(names),), dtype='f')
 
     # Needed for encoding the json metadata
     dt = h5py.special_dtype(vlen=bytes)
@@ -108,7 +109,7 @@ def process_sample(conf, sample):
             metadata_dset[i] = json.dumps(tensor.metadata)
 
     logging.info("done saving {} to hdf5".format(sample))
-    logging.info('avg time: {} per tensor', times.mean())
+    logging.info('avg time: {} per tensor'.format(times.mean()))
 
 
 def par_process_sample(sample):
