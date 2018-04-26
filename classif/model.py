@@ -1,11 +1,18 @@
 import numpy as np
 import keras
 import h5py
+import tensorflow as tf
+from tensorflow.python.client import timeline
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.optimizers import SGD
 
+
+run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+run_metadata = tf.RunMetadata()
+sess = tf.Session()
+keras.backend.set_session(sess)
 
 f = h5py.File('/mnt/disk4/felix/h5/node9.h5')
 f_test = h5py.File('/mnt/disk4/felix/h5/node9_p.h5')
@@ -37,6 +44,11 @@ model.add(Dense(6, activation='softmax'))
 sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 model.compile(loss='categorical_crossentropy', optimizer=sgd)
 
-model.fit(x_train, y_train, batch_size=128, epochs=10, shuffle="batch")
-score = model.evaluate(x_test, y_test, batch_size=32, shuffle="batch")
+model.fit(x_train, y_train, batch_size=128, epochs=1, shuffle="batch")
+score = model.evaluate(x_test, y_test, batch_size=128, shuffle="batch")
 print(score)
+
+tl = timeline.Timeline(step_stats=run_metadata.step_stats)
+ctf = tl.generate_chrome_trace_format()
+with open('timeline.json', 'w') as f:
+    f.write(ctf)
