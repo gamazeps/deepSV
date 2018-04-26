@@ -8,13 +8,12 @@ from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.optimizers import SGD
 
-
 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 run_metadata = tf.RunMetadata()
 sess = tf.Session()
 keras.backend.set_session(sess)
 
-f = h5py.File('/mnt/disk4/felix/h5/node9.h5')
+f = h5py.File('/mnt/disk4/felix/h5/node13_p.h5')
 f_test = h5py.File('/mnt/disk4/felix/h5/node9_p.h5')
 
 # Generate dummy data
