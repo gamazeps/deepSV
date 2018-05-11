@@ -12,11 +12,8 @@ SPLIT_MARKER = 10
 FULL_WINDOW = 2 * BREAKPOINT_WINDOW + SPLIT_MARKER
 
 class TensorEncoder(object):
-    def __init__(self, n_channels=4, sam_channels=4, ref_channels=0):
-        assert(n_channels == (sam_channels + ref_channels))
+    def __init__(self, n_channels=4):
         self.n_channels = n_channels
-        self.sam_channels = sam_channels
-        self.ref_channels = ref_channels
 
     def encode_sam(self, read):
         """
@@ -32,7 +29,7 @@ class TensorEncoder(object):
         }
 
         (x,) = read.shape
-        data = np.full((x, self.sam_channels), 0)
+        data = np.full((x, self.n_channels), 0)
         for i in range(0, x):
             data[i] = encoding[read[i]]
         return data
@@ -52,7 +49,7 @@ class TensorEncoder(object):
         }
 
         (x,) = read.shape
-        data = np.full((x, self.ref_channels), 0)
+        data = np.full((x, self.n_channels), 0)
         for i in range(0, x):
             data[i] = encoding[read[i]]
         return data
@@ -101,7 +98,7 @@ class DeepSVTensor(object):
             self.n_pairs += 1
             return
         if self.is_split:
-            self.tensor[self.n_pairs, :BREAKPOINT_WINDOW, :self.encoder.sam_channels] = (
+            self.tensor[self.n_pairs, :BREAKPOINT_WINDOW] = (
                 self.encoder.encode_sam(
                     rp.extract_range(
                         self.begin - (BREAKPOINT_WINDOW // 2),
@@ -110,8 +107,7 @@ class DeepSVTensor(object):
                     )
                 )
             )
-            self.tensor[self.n_pairs, BREAKPOINT_WINDOW + SPLIT_MARKER:,
-                        :self.encoder.sam_channels] = (
+            self.tensor[self.n_pairs, BREAKPOINT_WINDOW + SPLIT_MARKER:] = (
                             self.encoder.encode_sam(
                                 rp.extract_range(
                                     self.end - (BREAKPOINT_WINDOW // 2),
@@ -123,7 +119,7 @@ class DeepSVTensor(object):
         else:
             l_center_pad = (FULL_WINDOW - (self.size + BREAKPOINT_WINDOW) + 1) // 2
             r_center_pad = (FULL_WINDOW - (self.size + BREAKPOINT_WINDOW)) // 2
-            self.tensor[self.n_pairs, l_center_pad: -r_center_pad, :self.encoder.sam_channels] = (
+            self.tensor[self.n_pairs, l_center_pad: -r_center_pad] = (
                 self.encoder.encode_sam(
                     rp.extract_range(
                         self.begin - (BREAKPOINT_WINDOW // 2),
@@ -138,10 +134,10 @@ class DeepSVTensor(object):
     def insert_ref(self, ref):
         """
         Adds the reference sequence to the tensor.
+        FIXME: fucked up
         """
         if self.is_split:
-            self.tensor[:, :BREAKPOINT_WINDOW, self.encoder.sam_channels:
-                        self.encoder.sam_channels + self.encoder.ref_channels] = (
+            self.tensor[:, :BREAKPOINT_WINDOW] = (
                             self.encoder.encode_ref(
                                 ref.extract_range(
                                     self.begin - (BREAKPOINT_WINDOW // 2),
@@ -150,8 +146,7 @@ class DeepSVTensor(object):
                                 )
                             )
                         )
-            self.tensor[:, BREAKPOINT_WINDOW + SPLIT_MARKER:, self.encoder.sam_channels:
-                        self.encoder.sam_channels + self.encoder.ref_channels] = (
+            self.tensor[:, BREAKPOINT_WINDOW + SPLIT_MARKER:] = (
                             self.encoder.encode_ref(
                                 ref.extract_range(
                                     self.end - (BREAKPOINT_WINDOW // 2),
@@ -163,8 +158,7 @@ class DeepSVTensor(object):
         else:
             l_center_pad = (FULL_WINDOW - (self.size + BREAKPOINT_WINDOW) + 1) // 2
             r_center_pad = (FULL_WINDOW - (self.size + BREAKPOINT_WINDOW)) // 2
-            self.tensor[:, l_center_pad: -r_center_pad, self.encoder.sam_channels:
-                        self.encoder.sam_channels + self.encoder.ref_channels] = (
+            self.tensor[:, l_center_pad: -r_center_pad] = (
                             self.encoder.encode_ref(
                                 ref.extract_range(
                                     self.begin - (BREAKPOINT_WINDOW // 2),

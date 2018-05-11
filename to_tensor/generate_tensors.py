@@ -10,6 +10,7 @@ import sys
 import time
 import os
 import numpy as np
+import tensorflow as tf
 
 from read_pairs import ReadPair, RefSeq
 import utils
@@ -25,17 +26,22 @@ def find_variant_files(path, sample):
 
 def build_tensor(basename, reads_limit=150):
     metadata = utils.get_json(basename + ".json")
-    read_pairs = build_read_pairs(basename + ".bam", reads_limit)
+    read_pairs = build_read_pairs(basename + ".bam", reads_limit - 5)
+    begin = time.time()
     ref = RefSeq(basename + ".fa")
-    encoder = deepsv_tensor.TensorEncoder(n_channels=8, sam_channels=4, ref_channels=4)
+    encoder = deepsv_tensor.TensorEncoder(n_channels=4)
 
     tensor = deepsv_tensor.DeepSVTensor(encoder=encoder,
                                         metadata=metadata,
                                         pairs_capacity=reads_limit)
-    tensor.insert_ref(ref)
+    tensor.insert_read_pair(ref)
+    tensor.insert_read_pair(ref)
+    tensor.insert_read_pair(ref)
+    tensor.insert_read_pair(ref)
+    tensor.insert_read_pair(ref)
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
-
+    logging.info(time.time() - begin)
     return tensor
 
 
@@ -73,40 +79,42 @@ def process_variant(fname, draw=False):
 
 def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
-    # TODO(gamazeps): keeping all the tensors in memory uses a lot of RAM for nothing.
-    # The tensors could be written one by one, however we have enough memory on the cluster
-    # to do that with 32 threads in parrallel (750GB used at the max).
-    # It could easily be optimized by writing the tensors one by one to hdf5.
-    logging.info("Starting processing {}".format(sample))
-
     if len(names) == 0:
         return
 
+    logging.info("Starting processing {}".format(sample))
+
     times = np.zeros((len(names),), dtype='f')
 
-    # Needed for encoding the json metadata
-    dt = h5py.special_dtype(vlen=bytes)
+    out_path = os.path.join(conf["tensors_path"], sample + '.tfrecords')
 
-    with h5py.File("{}/{}.h5".format(conf["tensors_path"], sample), "w") as f:
-        data_dset= f.create_dataset("data",
-                                     shape=(len(names), 150, 2014, 8),
-                                     compression="lzf",
-                                     dtype="u1")
-        labels_dset= f.create_dataset("labels",
-                                      shape=(len(names),),
-                                      compression="lzf",
-                                      dtype="u1")
-        metadata_dset= f.create_dataset("metadata",
-                                        shape=(len(names),),
-                                        compression="lzf",
-                                        dtype=dt)
+    # Open a TFRecordWriter for the output-file.
+    with tf.python_io.TFRecordWriter(out_path) as writer:
+
         for i, fname in enumerate(names):
             start = time.time()
             tensor = process_variant(fname)
+
+            # Create a dict with the data we want to save in the
+            # TFRecords file. You can add more relevant data here.
+            # Wrap the data as TensorFlow Features.
+            data = \
+                {
+                    'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[tensor.tensor.tostring()])),
+                    'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[tensor.label()]))
+                }
+
+            feature = tf.train.Features(feature=data)
+
+            # Wrap again as a TensorFlow Example.
+            example = tf.train.Example(features=feature)
+
+            # Serialize the data.
+            serialized = example.SerializeToString()
+
+            # Write the serialized data to the TFRecords file.
+            writer.write(serialized)
             times[i] = time.time() - start
-            data_dset[i] = tensor.tensor
-            labels_dset[i] = tensor.label()
-            metadata_dset[i] = json.dumps(tensor.metadata)
 
     logging.info("done saving {} to hdf5".format(sample))
     logging.info('avg time: {} per tensor'.format(times.mean()))
