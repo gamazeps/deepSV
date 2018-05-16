@@ -69,14 +69,6 @@ def get_whitelist(fname):
         return [l.strip() for l in f]
 
 
-def process_variant(fname, draw=False):
-    tensor = build_tensor(fname)
-    if draw:
-        tensor.dummy_image("{}.png".format(fname), draw_bp=True)
-        logging.info("{}.png".format(fname))
-    return tensor
-
-
 def process_sample(conf, sample):
     names = find_variant_files(conf["reads_path"], sample)
     if len(names) == 0:
@@ -93,7 +85,7 @@ def process_sample(conf, sample):
 
         for i, fname in enumerate(names):
             start = time.time()
-            tensor = process_variant(fname)
+            tensor = build_tensor(fname)
 
             # Create a dict with the data we want to save in the
             # TFRecords file. You can add more relevant data here.
@@ -163,7 +155,6 @@ def main():
             process_sample(global_conf, sample)
 
     logging.info("Finished generating tensors")
-    sys.exit(0)
 
 
 if __name__ == "__main__":

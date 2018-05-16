@@ -3,7 +3,6 @@ Module for defining the DeepSVTensor class.
 """
 
 import numpy as np
-from PIL import Image, ImageDraw
 
 MEDIAN_READ_SIZE = 101
 MEDIAN_INSERT_SIZE = 400
@@ -167,39 +166,6 @@ class DeepSVTensor(object):
                                 )
                             )
                         )
-
-
-    def dummy_image(self, fname, draw_bp=False):
-        if self.pairs_capacity == 0:
-            return
-
-        img = Image.new("RGB", (FULL_WINDOW, self.pairs_capacity), (0, 0, 0))
-        draw = ImageDraw.Draw(img, "RGB")
-        values = {
-            "A": (54, 117, 177),
-            "C": (241, 133, 39),
-            "G": (79, 158, 57),
-            "T": (199, 56, 44),
-            "N": (127, 127, 127),
-            self.dummy: (0, 0, 0)
-        }
-
-        for i in range(0, self.pairs_capacity):
-            read = self.encoder.decode_sam(self.tensor[i], dummy=self.dummy)
-            for j in range(0, FULL_WINDOW):
-                draw.point((j, i), values[read[j]])
-
-        if self.is_split:
-            for i in range(0, self.pairs_capacity):
-                for j in range(BREAKPOINT_WINDOW, BREAKPOINT_WINDOW + SPLIT_MARKER):
-                    draw.point((j, i), (255, 0, 0))
-
-        if draw_bp:
-            for i in range(0, self.pairs_capacity):
-                draw.point((BREAKPOINT_WINDOW / 2, i), (255, 255, 255))
-                draw.point((FULL_WINDOW - (BREAKPOINT_WINDOW / 2), i), (255, 255, 255))
-
-        img.save(fname)
 
     def label(self):
         label_to_int = {
