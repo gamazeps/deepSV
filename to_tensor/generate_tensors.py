@@ -101,7 +101,7 @@ def process_sample(conf, sample):
             data = \
                 {
                     'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[tensor.tensor.tostring()])),
-                    'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[tensor.label()]))
+                    'label': tf.train.Feature(int64=tf.train.Int64(value=[tensor.label()]))
                 }
 
             feature = tf.train.Features(feature=data)
