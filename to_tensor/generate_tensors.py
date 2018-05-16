@@ -1,6 +1,4 @@
-import cPickle
 import glob
-import h5py
 import json
 import logging
 import multiprocessing
@@ -17,16 +15,15 @@ import utils
 import deepsv_tensor
 
 global_conf = None
-count = 0
 
 def find_variant_files(path, sample):
     fnames = glob.glob("{}/{}/*bam".format(path, sample))
     return [fname[:-4] for fname in fnames]
 
 
-def build_tensor(basename, reads_limit=150):
+def build_tensor(basename, reads_limit=150, ref_rep=5):
     metadata = utils.get_json(basename + ".json")
-    read_pairs = build_read_pairs(basename + ".bam", reads_limit - 5)
+    read_pairs = build_read_pairs(basename + ".bam", reads_limit - ref_rep)
     begin = time.time()
     ref = RefSeq(basename + ".fa")
     encoder = deepsv_tensor.TensorEncoder(n_channels=4)
@@ -34,14 +31,13 @@ def build_tensor(basename, reads_limit=150):
     tensor = deepsv_tensor.DeepSVTensor(encoder=encoder,
                                         metadata=metadata,
                                         pairs_capacity=reads_limit)
-    tensor.insert_read_pair(ref)
-    tensor.insert_read_pair(ref)
-    tensor.insert_read_pair(ref)
-    tensor.insert_read_pair(ref)
-    tensor.insert_read_pair(ref)
+
+    for _ in range(5):
+        tensor.insert_read_pair(ref)
+
     for pair in read_pairs:
         tensor.insert_read_pair(pair)
-    logging.info(time.time() - begin)
+
     return tensor
 
 
