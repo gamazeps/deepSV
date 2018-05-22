@@ -104,7 +104,7 @@ def process_sample(conf, sample):
             writer.write(serialized)
             times[i] = time.time() - start
 
-    logging.info("done saving {} to hdf5".format(sample))
+    logging.info("done saving {} to {}".format(sample, out_path))
     logging.info('avg time: {} per tensor'.format(times.mean()))
 
 
