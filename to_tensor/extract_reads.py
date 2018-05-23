@@ -56,7 +56,7 @@ def extract_reads(sample, records, conf):
         bam_fname = os.path.join(out_dir, "{}.bam".format(record.id))
         supporting_reads = pysam.AlignmentFile(bam_fname, "wb", template=bamfile)
 
-        variant_size = record.stop - record.stop
+        variant_size = record.stop - record.start
         # Taking two halves, but probably not needed at that step, could be used only at
         # the tensor building phase.
         # Could even build the tensor there...
