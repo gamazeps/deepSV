@@ -84,7 +84,7 @@ class DeepSVTensor(object):
         self.end = self.metadata["stop"]
         self.size = self.end - self.begin
         self.pairs_capacity = pairs_capacity
-        self.tensor = np.full((pairs_capacity, FULL_WINDOW, encoder.n_channels), 0)
+        self.tensor = np.full((pairs_capacity, FULL_WINDOW, encoder.n_channels), 0, dtype='int8')
         self.n_pairs = 0
         self.is_split = self.size > BREAKPOINT_WINDOW
 
