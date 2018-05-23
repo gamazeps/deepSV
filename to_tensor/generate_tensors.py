@@ -9,12 +9,11 @@ import time
 import os
 import numpy as np
 import tensorflow as tf
+import argparse
 
 from read_pairs import ReadPair, RefSeq
 import utils
 import deepsv_tensor
-
-global_conf = None
 
 def find_variant_files(path, sample):
     fnames = glob.glob("{}/{}/*bam".format(path, sample))
@@ -52,7 +51,7 @@ def build_read_pairs(fname, sample_limit):
             records[read.qname].add_read(read)
 
         # Here we sample up to `sample_limit` reads at random
-        records_list = [v for (_, v) in records.iteritems()]
+        records_list = [v for (_, v) in records.items()]
         n_records = len(records_list)
         sampled_indices = sorted(random.sample(range(n_records), min(n_records, sample_limit)))
         sampled_records_list = [records_list[i] for i in sampled_indices]
@@ -65,7 +64,7 @@ def get_whitelist(fname):
         return [l.strip() for l in f]
 
 
-def process_sample(conf, sample):
+def process_sample(sample, conf):
     names = find_variant_files(conf["reads_path"], sample)
     if len(names) == 0:
         return
@@ -107,48 +106,40 @@ def process_sample(conf, sample):
     logging.info("done saving {} to {}".format(sample, out_path))
     logging.info('avg time: {} per tensor'.format(times.mean()))
 
-
-def par_process_sample(sample):
-    process_sample(global_conf, sample)
-    return 0
+    # The return value is needed for multiprocessing
+    return None
 
 
 def main():
-    # The global variables are ugly, but we need them to be global so that they
-    # can de passed to multi_processing
-    global global_conf
+    parser = argparse.ArgumentParser(description='Tool for generating TFRecords from bam files')
+    parser.add_argument("--conf", type=str, required=True)
+    parser.add_argument("--whitelist", type=str, required=True)
+    parser.add_argument("--log-output", type=str, default=None)
+    args = parser.parse_args()
 
-    if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print("Please provide at least 2 arguments: configuration.json whitelist [log]")
-        sys.exit(1)
+    utils.set_logging(fname=args.log_output)
 
-    if len(sys.argv) == 4:
-        print("logging to {}".format(sys.argv[3]))
-        utils.set_logging(fname=sys.argv[3])
-    else:
-        utils.set_logging()
+    conf_fname = args.conf
+    whitelist_fname = args.whitelist
 
-    conf_fname = sys.argv[1]
-    whitelist_fname = sys.argv[2]
-
-    global_conf = utils.get_json(conf_fname)
+    conf = utils.get_json(conf_fname)
     samples = get_whitelist(whitelist_fname)
 
-    if not os.path.exists(global_conf['tensors_path']):
-        logging.info("Creating the {} directory".format(global_conf['tensors_path']))
-        os.makedirs(global_conf['tensors_path'])
+    if not os.path.exists(conf['tensors_path']):
+        logging.info("Creating the {} directory".format(conf['tensors_path']))
+        os.makedirs(conf['tensors_path'])
 
     samples_size = len(samples)
     logging.info("There is a total of {} samples to process".format(samples_size))
 
-    n_threads = global_conf.get("n_threads", 1)
+    n_threads = conf.get("n_threads", 1)
 
     if n_threads > 1:
         p = multiprocessing.Pool(n_threads)
-        p.map(par_process_sample, samples)
+        p.starmap(process_sample, ((sample, conf) for sample in samples))
     else:
         for sample in samples:
-            process_sample(global_conf, sample)
+            process_sample(sample, conf)
 
     logging.info("Finished generating tensors")
 
