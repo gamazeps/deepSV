@@ -11,10 +11,10 @@ def sv_model_fn(features, labels, mode):
   """Model function for CNN."""
   # Input Layer
   # Reshape X to 4-D tensor: [batch_size, height, width, channels]
-  input_layer = tf.reshape(features, [-1, 150, 2014, 4])
+  #input_layer = tf.reshape(features, [-1, 150, 2014, 4])
 
   # Flatten tensor into a batch of vectors
-  flat = tf.reshape(input_layer, [-1, 150 * 2014 * 4])
+  flat = tf.reshape(features, [-1, 150 * 2014 * 4])
 
   # Logits layer
   # Input Tensor Shape: [batch_size, 1024]
@@ -58,6 +58,7 @@ def parser(serialized_example):
         "label": tf.FixedLenFeature((), tf.int64, default_value=0)
       })
   image = tf.decode_raw(features['data'], tf.uint8)
+  # TF does not suppport operations on uint8
   image = tf.cast(image, tf.float32)
 
   return image, features['label']
@@ -95,7 +96,7 @@ def main(unused_argv):
   sv_classifier.train(
       input_fn=train_input_fn,
       steps=10000,
-      hooks=[logging_hook])
+      hooks=[logging_hook, tf.train.ProfilerHook(show_memory=True, save_steps=10)])
 
   # Evaluate the model and print results
   eval_results = mnist_classifier.evaluate(input_fn=train_input_fn, steps=100)
