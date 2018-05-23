@@ -1,7 +1,0 @@
-{
-    "alignments": "/mnt/disk1/felix/alignment/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data",
-    "supporting_reads_path": "/mnt/disk2/felix/supporting_reads",
-    "reference_path": "/mnt/disk1/felix/human_g1k_v37.fasta",
-    "vcf_path" : "/mnt/disk1/felix/estd219.GRCh37.variant_call.vcf.gz",
-    "n_threads": 32
-}

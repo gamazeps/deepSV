@@ -1,5 +1,8 @@
 {
-    "reads_path": "/mnt/disk2/felix/supporting_reads",
+    "alignments": "/mnt/disk1/felix/alignment/ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data",
+    "reference_path": "/mnt/disk1/felix/human_g1k_v37.fasta",
+    "vcf_path" : "/mnt/disk1/felix/estd219.GRCh37.variant_call.vcf.gz",
+    "supporting_reads_path": "/mnt/disk2/felix/supporting_reads",
     "tensors_path": "/mnt/disk3/felix/tensors/tfrecords",
     "n_threads": 32
 }

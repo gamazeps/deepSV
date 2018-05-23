@@ -65,7 +65,7 @@ def get_whitelist(fname):
 
 
 def process_sample(sample, conf):
-    names = find_variant_files(conf["reads_path"], sample)
+    names = find_variant_files(conf["supporting_reads_path"], sample)
     if len(names) == 0:
         return
 

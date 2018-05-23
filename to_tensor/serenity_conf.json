@@ -1,5 +1,8 @@
 {
-    "reads_path": "../spark/out",
+    "alignments": "../data/alignment",
+    "supporting_reads_path": "supporting_reads",
+    "reference_path": "data/human_g1k_v37.fasta",
+    "vcf_path" : "data/estd219.GRCh37.variant_call.vcf.gz",
     "tensors_path": "../data/tensors",
     "n_threads": 1
 }

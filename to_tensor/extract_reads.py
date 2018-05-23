@@ -1,6 +1,3 @@
-"""
-Let's write this shit as if it were flume !
-"""
 import collections
 import json
 import glob
@@ -8,6 +5,7 @@ import logging
 import multiprocessing
 import os
 import sys
+import argparse
 
 import pysam
 
@@ -99,14 +97,13 @@ def extract_reads(sample, records, conf):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Tool for extracting reads from bam files')
+    parser.add_argument("--conf", type=str, required=True)
+    args = parser.parse_args()
+    conf = utils.get_json(args.conf)
+
     utils.set_logging()
     logging.info("Starting to extract reads")
-
-    if len(sys.argv) != 2:
-        print("Please provide 1 argument: configuration.json")
-        sys.exit(1)
-
-    conf = utils.get_json(sys.argv[1])
 
     logging.info("Starting to parse the VCF")
     vcf = pysam.VariantFile(conf['vcf_path'], 'rb')
