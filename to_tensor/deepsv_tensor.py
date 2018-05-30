@@ -151,6 +151,7 @@ class DeepSVTensor(object):
 
     def label(self):
         label_to_int = {
+            "FAKE": 0,
             "DEL": 1,
             "DUP": 2,
             "INV": 3,
