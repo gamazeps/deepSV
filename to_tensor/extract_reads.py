@@ -20,13 +20,13 @@ class VariantRecordWrapper(object):
     # Needed because record.info is a VariantRecordInfo object which
     # overrides its __getitem__ method in order to act as a dict.
     # Since the VariantRecordInfo class is not serializable, we need to do it ourselve.
-    def __init__(self, record):
-        self.chrom = record.chrom
-        self.start = record.start
-        self.stop = record.stop
-        self.id = record.id
-        self.alts = record.alts
-        self.info = dict(record.info.items())
+    def __init__(self, chrom, start, stop, id, alts, info):
+        self.chrom = chrom
+        self.start = start
+        self.stop = stop
+        self.id = id
+        self.alts = alts
+        self.info = info
 
     def to_json(self):
         return {
@@ -96,25 +96,52 @@ def extract_reads(sample, records, conf):
     return None
 
 
+def extract_vcf_records(vcfs):
+    logging.info("Starting to parse the records from {}".format(vcfs))
+    per_sample = collections.defaultdict(list)
+
+    for vcf_file in vcfs:
+        if vcf_file["type"] == "vcf":
+            vcf = pysam.VariantFile(vcf_file['file_path'], 'rb')
+            for record in vcf.fetch():
+                # We want to remove variants with uncertain locations
+                if "CIEND" in record.info.keys() or "CIPOS" in record.info.keys():
+                    continue
+                record_wrapper = VariantRecordWrapper(
+                        chrom=record.chrom,
+                        start=record.start,
+                        stop=record.stop,
+                        id=record.id,
+                        alts=record.alts,
+                        info=dict(record.info.items()))
+                per_sample[record.info["SAMPLE"]].append(record_wrapper)
+
+        elif vcf_file["type"] == "json":
+            with open(vcf_file["file_path"]) as f:
+                records = json.load(f)
+            for record in records:
+                record_wrapper = VariantRecordWrapper(
+                        chrom=record["chrom"],
+                        start=record["start"],
+                        stop=record["stop"],
+                        id=record["id"],
+                        alts=None,
+                        info=record["info"])
+                per_sample[record_wrapper.info["SAMPLE"]].append(record_wrapper)
+
+    logging.info("Finished parsing the VCF")
+    return per_sample
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Tool for extracting reads from bam files')
+    parser = argparse.ArgumentParser(
+            description='Tool for extracting reads from bam files')
     parser.add_argument("--conf", type=str, required=True)
     args = parser.parse_args()
     conf = utils.get_json(args.conf)
-
     utils.set_logging()
-    logging.info("Starting to extract reads")
 
-    logging.info("Starting to parse the VCF")
-    vcf = pysam.VariantFile(conf['vcf_path'], 'rb')
-
-    per_sample = collections.defaultdict(list)
-    for record in vcf.fetch():
-        # We want to remove variants with uncertain locations
-        if "CIEND" in record.info.keys() or "CIPOS" in record.info.keys():
-            continue
-        per_sample[record.info["SAMPLE"]].append(VariantRecordWrapper(record))
-    logging.info("Finished parsing the VCF")
+    per_sample = extract_vcf_records(conf["vcfs"])
 
     n_threads = conf.get("n_threads", 1)
     logging.info("Starting to generate the reads on {} threads".format(n_threads))

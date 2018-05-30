@@ -36,7 +36,8 @@ class TensorEncoder(object):
     def encode_ref(self, read):
         """
         hardcoded encoding, this is bad
-        NOTE: copy of `encode_sam` for now, but sam will soon have more info (qual for ex)
+        NOTE: copy of `encode_sam` for now, but sam will soon have more info
+        (qual for ex)
         """
         encoding = {
             " ": [0, 0, 0, 0],
@@ -52,25 +53,6 @@ class TensorEncoder(object):
         for i in range(0, x):
             data[i] = encoding[read[i]]
         return data
-
-    def decode_sam(self, encoding, dummy=' '):
-        """
-        hardcoded encoding, this is bad
-        """
-        (x, y) = encoding.shape
-        assert(y == self.n_channels)
-        res = np.full(x, dummy)
-        for i in range(0, x):
-            # TODO(gamazeps): this is probably horribly slow
-            if encoding[i][0] == 1:
-                res[i] = "A"
-            elif encoding[i][1] == 1:
-                res[i] = "C"
-            elif encoding[i][2] == 1:
-                res[i] = "G"
-            elif encoding[i][3] == 1:
-                res[i] = "T"
-        return res
 
 
 class DeepSVTensor(object):

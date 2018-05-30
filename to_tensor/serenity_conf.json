@@ -1,8 +1,11 @@
 {
     "alignments": "../data/alignment",
-    "supporting_reads_path": "supporting_reads",
+    "supporting_reads_path": "../data/supporting_reads",
     "reference_path": "data/human_g1k_v37.fasta",
-    "vcf_path" : "data/estd219.GRCh37.variant_call.vcf.gz",
+    "vcfs" : [
+        {"file_path": "data/estd219.GRCh37.variant_call.vcf.gz", "type": "vcf"},
+        {"file_path": "test.json", "type": "json"}
+    ],
     "tensors_path": "../data/tensors",
     "n_threads": 1
 }
