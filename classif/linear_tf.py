@@ -2,6 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import glob
+import os
+
 import numpy as np
 import tensorflow as tf
 
@@ -65,19 +68,18 @@ def parser(serialized_example):
 
 def train_input_fn():
   # Import MNIST data
-  batch_size = 32
-  train_filenames = "../data/tensors/NA12878.tfrecords"
-  dataset = tf.data.TFRecordDataset(train_filenames)
+  batch_size = 128
+  fnames = glob.glob(os.path.join("/mnt/disk3/felix/tensors/tfrecords", "*.tfrecords"))
+  #train_filenames = "../data/tensors/NA12878.tfrecords"
+  dataset = tf.data.TFRecordDataset(fnames)
 
   # Map the parser over dataset, and batch results by up to batch_size
-  dataset = dataset.map(parser)
+  dataset = dataset.map(parser, num_parallel_calls=32)
   dataset = dataset.batch(batch_size)
   dataset = dataset.repeat()
-  iterator = dataset.make_one_shot_iterator()
+  dataset = dataset.prefetch(buffer_size=10*batch_size)
 
-  features, labels = iterator.get_next()
-
-  return features, labels
+  return dataset
 
 def main(unused_argv):
   # Load training and eval data
@@ -96,7 +98,7 @@ def main(unused_argv):
   sv_classifier.train(
       input_fn=train_input_fn,
       steps=10000,
-      hooks=[logging_hook, tf.train.ProfilerHook(show_memory=True, save_steps=10)])
+      hooks=[logging_hook, tf.train.ProfilerHook(show_memory=True, save_steps=100)])
 
   # Evaluate the model and print results
   eval_results = mnist_classifier.evaluate(input_fn=train_input_fn, steps=100)

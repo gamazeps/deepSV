@@ -6,5 +6,5 @@
     ],
     "supporting_reads_path": "/mnt/disk2/felix/supporting_reads",
     "tensors_path": "/mnt/disk3/felix/tensors/tfrecords",
-    "n_threads": 32
+    "n_threads": 20
 }
