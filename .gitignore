@@ -2,5 +2,7 @@
 logs/*
 *.pyc
 *.DS_Store
+data/*
 timeline-*
 ievents.out.tfevents.*
+venv/*
