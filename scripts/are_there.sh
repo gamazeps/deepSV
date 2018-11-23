@@ -1,1 +1,0 @@
-pgrep -f 'python generate'
